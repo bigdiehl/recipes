@@ -1,0 +1,1 @@
+TODO - This could be a could sample for extracting recipe elements from a single doc (reciple.yaml). If the recipe is simple enough, then we should be able to get everything from a single doc. 

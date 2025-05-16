@@ -10,7 +10,7 @@ import numpy as np
 
 unit = UnitRegistry()
 
-target_dir = "."
+target_dir = "./recipes"
 
 lists = {}
 metas = {}
