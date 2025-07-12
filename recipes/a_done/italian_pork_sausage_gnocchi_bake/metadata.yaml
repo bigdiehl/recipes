@@ -1,0 +1,5 @@
+servings: 4
+category: entree
+meal: dinner
+enabled: False
+min_period_weeks: 4

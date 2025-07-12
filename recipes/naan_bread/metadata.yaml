@@ -1,0 +1,5 @@
+servings: 4
+category: side
+meal: dinner
+enabled: True
+min_period_weeks: 6
