@@ -10,6 +10,13 @@ import numpy as np
 
 unit = UnitRegistry()
 
+
+def add_dimensionless_unit(name):
+    unit.define(f"{name} = 1 * dimensionless")
+   
+add_dimensionless_unit("bundle")
+add_dimensionless_unit("cans")
+
 target_dir = "./recipes"
 
 lists = {}
@@ -49,8 +56,16 @@ for name, df in lists.items():
             raise ValueError(f"{name} does not match any defined foods in foods.py")
         return food
     
+    def convert_quantity(name):
+        try:
+            u = unit(name)
+            return u
+        except:
+            if name == "-":
+                return unit("") # Dimensionless
+    
     try:
-        df['quantity'] = df['quantity'].apply(lambda x: unit(x))
+        df['quantity'] = df['quantity'].apply(convert_quantity)
         df['food'] = df['food'].apply(convert_to_food)
     except Exception as e:
         print(colored(f"Error encountered when parsing shopping list for {name}", "red"))
@@ -68,7 +83,7 @@ for name, df in lists.items():
 this_week = [
     'honey_lime_enchiladas',
     'cajun_chicken_linguine',
-    'honey_lime_enchiladas',
+    'clam_chowder',
 ]
     
 # Merge and sort
@@ -88,7 +103,10 @@ while len(temp_df) > 0:
     # Combine into single ingredient
     ingredients: List[Ingredient] = []
     for index, row in same_foods.iterrows():
-        ingredients.append(Ingredient(**row.to_dict()))
+        try:
+            ingredients.append(Ingredient(**row.to_dict()))
+        except:
+            breakpoint()
 
     merged_ingredients.append(np.sum(ingredients))
     

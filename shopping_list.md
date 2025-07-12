@@ -3,27 +3,44 @@
 For:
 - honey_lime_enchiladas
 - cajun_chicken_linguine
-- honey_lime_enchiladas
+- clam_chowder
 
 ## Main List
 
 #### FRUIT
-- lime (6)
+- lime (3)
+
 #### MEAT
-- chicken breast (8)
+- chicken breast (5)
+- minced clams (2 cans)
+
+#### OTHER
+- flour (2 tablespoon)
+- tortillas (1 dimensionless)
+
 #### DAIRY
 - butter (2 tablespoon)
 - cream (1 cup)
+- half and half (1 cup)
+- milk (2 cup)
+
 #### VEGETABLE
 - green pepper (1)
 - red pepper (1)
-----------
+- white onion (1)
+- yellow potatoes (2.5 cup)
+
+
 
 ## Likely to Already Have
 
 #### OTHER
-- honey (6 tablespoon)
+- chicken bouillon (1 teaspoon)
+- honey (3 tablespoon)
+
 #### SPICE
 - cajun seasoning (2 teaspoon)
-- chili powder (2 tablespoon)
-- garlic powder (1.0 tablespoon)
+- chili powder (1 tablespoon)
+- garlic powder (0.5 tablespoon)
+- pepper (0.125 teaspoon)
+- thyme (0.25 teaspoon)
