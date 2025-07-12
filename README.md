@@ -1,5 +1,10 @@
 
+## Description
 
+This repo (a) recipe data in the 'recipes' directory and (b) contains functionality for generating a shopping list from that recipe data.
+
+
+## TODO
 Handle foods
     - Without any quantity at all (tortillas)
         - What if multiple recipes call for this? Make sure you get enough for both. 
@@ -11,7 +16,6 @@ Sometimes it just doesn't make sense to put exact quantities in the shopping lis
 
 Metadata
 - 'meal' can include multiple meals
-
 
 Recipes
 - gnocchi_bake needs revision. Doesn't have any quantity info on half the ingredients. Disabled for now. 
