@@ -1,5 +1,8 @@
+"""DESCRIPTION: Contains the list of all supported foods, and their definitions."""
+
 from recipe_lib import Food, FoodType
 from pprint import pprint
+from typing import Union
 
 # List of recognized foods
 foods = [
@@ -58,7 +61,8 @@ foods = [
     Food(["linguine pasta", "flat pasta"], FoodType.Other)
 ]
 
-def get_food(name):
+def get_food(name: str) -> Union[Food, None]:
+    """Return the Food object if the provided name matches one of it's names."""
     for food in foods:
         if food.has_name(name):
             return food

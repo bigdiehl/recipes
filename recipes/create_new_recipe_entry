@@ -1,0 +1,28 @@
+#!/usr/bin/python3
+
+# Used to create a new directory and starter files for a new recipe
+# Usage: python3 new_recipe_template.py <recipe_name>
+
+import os
+import os.path as osp
+import sys
+import pathlib
+import shutil
+
+recipe_name = sys.argv[1]
+
+new_recipe_dir = osp.join(pathlib.Path(__file__).parent.resolve(), recipe_name)
+
+# Create directory
+if not os.path.exists(new_recipe_dir):
+    os.mkdir(new_recipe_dir)
+
+# Copy over starter files
+target_dir = osp.join(new_recipe_dir, "../../recipe_starter_files")
+for file in os.listdir(target_dir):
+    shutil.copy(
+        osp.join(target_dir, file), 
+        osp.join(new_recipe_dir, file)
+    )
+    
+print(f"New directory created at {new_recipe_dir}. Starter files copied over.")

@@ -1,7 +1,36 @@
 
 ## Description
 
-This repo (a) recipe data in the 'recipes' directory and (b) contains functionality for generating a shopping list from that recipe data.
+This repo:
+- stores recipe data in the 'recipes' directory 
+- contains functionality for generating a shopping list from that recipe data.
+- contains tools for sending out the list in an email report
+
+## Setup
+
+
+
+## Recipes
+
+All recipes are stored in the `recipes` directory. Each recipe is composed of 3 files:
+1. `shopping_list.csv` - The name and quantity of ingredients to get.
+    - The ingredient names must match a name in `foods.py`. 
+    - The `quantity` field can either be a number, a number and a unit, or `-` for unspecified. 
+    - If specifying a quantity doesn't make sense, just put `-` in that field. (e.g. a recipe needs x amount of sour cream, but sour cream is bought by the tub. Putting `-` will effectively result in the shopping list just saying "sour cream")
+2. `metadata.yaml` - High level attributes for the recipe. 
+    - servings: int. 
+    - category: [entree, salad, dessert side]
+    - meal: [breakfast, lunch, dinner]
+    - enabled [true, false]
+    - min_period_weeks: int. Minimum number of weeks to wait before putting this recipe back into the pool of selection candidates.
+3. `recipe.md` - The human-readable recipe. Not used in generating shopping list.
+
+
+### Adding a New Recipe
+
+1. cd into the `recipes` directory
+2. Run `./new_recipe_template.py <recipe_name>`. This will generate a directory with the given `<recipe_name>` and copy over the starter files in `recipe_starter_files`
+
 
 
 ## TODO

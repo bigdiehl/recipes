@@ -1,3 +1,5 @@
+"""DESCRIPTION: Contains various supported classes/enums"""
+
 
 from dataclasses import dataclass
 from enum import Enum, auto
