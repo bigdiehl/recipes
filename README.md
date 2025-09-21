@@ -49,3 +49,14 @@ Metadata
 Recipes
 - gnocchi_bake needs revision. Doesn't have any quantity info on half the ingredients. Disabled for now. 
 - Same for firehous_mac_n_cheese
+
+
+- Web Interface
+Actions
+- See the upcoming recipe selection, and when the email will go out
+- Ability to modify the upcoming selection
+- Ability to modify the current selection. 
+- Ability to generate a custom selection
+- View recipes
+- Future
+    - ability to modify the recipe data (input new recipe, modify recipe)

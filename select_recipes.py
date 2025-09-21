@@ -2,6 +2,8 @@
 import numpy as np
 
 """
+
+
 GOAL: Randomly select some recipes for the week. 
 - We could just manually put together a list that we step through and repeat. 
 But that's kind of boring

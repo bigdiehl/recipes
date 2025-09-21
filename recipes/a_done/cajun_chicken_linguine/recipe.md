@@ -2,7 +2,7 @@
 
 Servings: 4
 
-<img style="float: right;" src="cajun_chicken_linguine.jpg" width=400>
+<img style="float: right;" src="cajun_chicken_linguine.jpg" width=300>
 
 ## Ingredients
 
