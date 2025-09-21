@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Recipe Browser{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid ms-0 px-0 mt-4 mb-4" id="recipeList">
+    <h2>Recipes</h2>
+    <div class="list-group overflow-auto mt-3 py-2 px-2 border" style="max-height: 250px;">
+        {% for recipe in recipes %}
+        <div class="recipe-item d-flex align-items-center justify-content-between" data-recipename="{{ recipe.name }}">
+            <span>{{ recipe.name }}</span>
+            <button 
+                type="button" 
+                class="btn {{ 'btn-primary' if recipe.selected else 'btn-success' }} btn-sm add-recipe" 
+                data-id="{{ recipe.id }}" 
+                data-selected="{{ recipe.selected }}"
+                data-bs-toggle="tooltip" 
+                data-bs-placement="top" 
+                title="Add this recipe">
+                    {{ '✔' if recipe.selected else '+' }}
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="markdown-content" id="markdownContent">
+    <em>Select a recipe above to view its contents.</em>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="{{ url_for('static', filename='scripts/recipes_list.js') }}"></script>
+
+{% endblock %}

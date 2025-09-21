@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Landing Page{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid ms-0 px-0 mt-4 mb-4" id="recipeList">
+    <h2>Selected Recipes</h2>
+    <div class="list-group mt-3 py-2 px-2 border">
+        {% for recipe in recipes %}
+        <div class="recipe-item d-flex align-items-center justify-content-between" data-recipename="{{ recipe.name }}">
+            <span>{{ recipe.name }}</span>
+            <button 
+                type="button" 
+                class="btn btn-danger btn-sm remove-recipe" 
+                data-id="{{ recipe.id }}"
+                data-bs-toggle="tooltip" 
+                data-bs-placement="top" 
+                title="Remove this recipe">
+                    -
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="markdown-content" id="markdownContent">
+    <em>Select recipes to generate shopping list.</em>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="{{ url_for('static', filename='scripts/shopping_list.js') }}"></script>
+
+{% endblock %}
