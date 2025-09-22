@@ -10,7 +10,7 @@ Servings: 4
 - 2 long green peppers  
 - 2 tsp minced garlic
 - Panko bread crumbs  
-- Seasoning blend  
+- Firehouse spice blend  
 - Cavatappi pasta  
 - Milk  
 - Shredded cheddar  

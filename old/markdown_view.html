@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Viewing {{ filename }}{% endblock %}
+
+{% block content %}
+    <h2>{{ filename }}</h2>
+    <div>
+        {{ content | safe }}
+    </div>
+    <a href="{{ url_for('recipes_list') }}">← Back to list</a>
+{% endblock %}

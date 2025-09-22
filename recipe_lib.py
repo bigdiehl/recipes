@@ -31,11 +31,10 @@ class MealType(Enum):
 @dataclass
 class Food:
     """
-    names - all names that the food may be referred to as. First will be used in 
-    shopping list. 
-    unit - Preferred unit for shopping lists
-    min_amount - Minimal amount that should trigger inclusion in a shopping
-        list. Measured in 'unit' units. E.g. 1 tsp flour is not enough to trigger
+    Elements:
+        - names: all names that the food may be referred to as. First will be used in shopping list. 
+        - unit: Preferred unit for shopping lists
+        - min_amount: Minimal amount that should trigger inclusion in a shopping list. Measured in 'unit' units. E.g. 1 tsp flour is not enough to trigger
     """
     names: Union[str, List[str]]
     category: FoodType

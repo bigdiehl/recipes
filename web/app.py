@@ -14,6 +14,7 @@ class Recipe(db.Model):
     dir = db.Column(db.String(200), nullable=False) # relative to 'recipes' dir
     md_filename = db.Column(db.String(200), nullable=False) 
     selected = db.Column(db.Boolean, default=False)
+    weeks_since_last = db.Column(db.Integer, default=1)
 
 # -----------------------------------------------------------------------
 

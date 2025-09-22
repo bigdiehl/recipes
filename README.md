@@ -51,12 +51,15 @@ Recipes
 - Same for firehous_mac_n_cheese
 
 
-- Web Interface
-Actions
-- See the upcoming recipe selection, and when the email will go out
-- Ability to modify the upcoming selection
-- Ability to modify the current selection. 
-- Ability to generate a custom selection
-- View recipes
-- Future
-    - ability to modify the recipe data (input new recipe, modify recipe)
+#### Next Steps
+
+1. Input more recipes
+2. Add ability in web interface to view combined shopping list
+    - Will need to load in recipe data in app.py at startup
+    - Add button to email out shopping list
+    - Add info display showing when the next shopping list will be sent out. (should detect cron job and when it will run)
+3. Need to figure out cron job for automatically sending out recipe list
+    - When run, it will take selection (making one if needed), generate shopping list, and email it out.
+    - It will randomly select for next week. Update the "selected" field of the db
+    - It will update the db field saying when the recipe was last chosen. 
+        - Need to figure out what units that will be in. 
