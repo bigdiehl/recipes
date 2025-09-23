@@ -1,10 +1,21 @@
 
 import os
-from flask import Flask, render_template, abort, jsonify, send_from_directory
+import os.path as osp
+from flask import Flask, render_template, abort, jsonify, send_from_directory, request
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 import markdown
 import re
+import sys
+
+# Get the absolute path of the current script's directory
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
+
+from shopping_list import get_shopping_list_data, get_merged_shopping_list, generate_shopping_list_md
+# from email.send_email import build_message, send_email
+
+lists, metas = get_shopping_list_data()
 
 db = SQLAlchemy()
 
@@ -85,6 +96,25 @@ db.init_app(app)
 
 # -----------------------------------------------------------------------
 
+def get_shopping_list_html():
+    recipes = Recipe.query.all()
+    selected_recipes = [recipe for recipe in recipes if recipe.selected]
+    selected_names = [r.name.replace(" ","_").lower() for r in selected_recipes]
+    print(selected_names)
+    
+    if len(selected_names) == 0:
+        return "<em>Select recipes to generate shopping list.</em>"
+    
+    main, secondary = get_merged_shopping_list(selected_names, lists)
+    md = generate_shopping_list_md(selected_names, main, secondary)
+    
+    output_dir="../output"
+    with open(osp.join(output_dir, "shopping_list.md"), "w") as f:
+        f.write(md)
+    
+    html_content = markdown.markdown(md)
+    return html_content
+
 @app.route('/')
 def index():
     recipes = Recipe.query.all()
@@ -92,9 +122,9 @@ def index():
     return render_template(
         'index.html', 
         active_page="home", 
-        recipes=sorted(selected_recipes, key=lambda x: x.name)
+        recipes=sorted(selected_recipes, key=lambda x: x.name),
+        shopping_list_html = get_shopping_list_html()
     )
-
 
 @app.route('/deselect/<int:recipe_id>', methods=['POST'])
 def deslect(recipe_id):
@@ -103,6 +133,25 @@ def deslect(recipe_id):
     db.session.commit()
     return jsonify({'success': True, 'selected': recipe.selected})
 
+@app.route('/markdown/shopping_list')
+def update_shopping_list_html():
+    html = get_shopping_list_html()
+    return jsonify({"html": html})
+    
+@app.route("/send_list", methods=["POST"])
+def send_list():
+    data = request.get_json()
+    email = data.get("email")
+
+    # Generate shopping list HTML or Markdown
+    shopping_list_html = get_shopping_list_html()  # replace with your function
+
+    # TODO: actually send email (e.g., Flask-Mail, smtplib, or an API like SendGrid)
+    # success = send_email(to=email, subject="Your Shopping List", body=shopping_list_html)
+    success=True
+    print(f"sending email to {email}")
+
+    return jsonify({"success": success})
 # -----------------------------------------------------------------------
 
 @app.route('/recipes_list')
@@ -126,8 +175,8 @@ def toggle(recipe_id):
 def serve_markdown_file(file):
     return send_from_directory("recipes", file)
 
-@app.route('/markdown/api/<recipe>')
-def get_markdown_content(recipe):
+@app.route('/markdown/recipe/<recipe>')
+def get_markdown_recipe(recipe):
 
     recipe = Recipe.query.filter_by(name=recipe).first()
     md_file = os.path.join("recipes", recipe.dir, recipe.md_filename)
@@ -165,4 +214,5 @@ if __name__ == '__main__':
         import_recipes()
         # To view database contents from CLI, use sqlite3 and the command 'SELECT * FROM recipe;'
         # sqlite3 instance/app.db 'SELECT * FROM recipe;'
+            
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -5,7 +5,7 @@ import yaml
 from pint import UnitRegistry
 from pprint import pprint
 from foods import get_food
-from typing import  List
+from typing import  List, Dict
 from termcolor import colored
 import numpy as np
 from recipe_lib import Ingredient, RecipeMetaData
@@ -68,7 +68,7 @@ def get_shopping_list_data(target_dir="./recipes"):
                     os.path.join(root, LIST_NAME),
                     skipinitialspace=True
                 )
-            except pd.errors.ParserError:
+            except pd.errors.ParserError as e:
                 print(f"Error parsing {os.path.join(root, LIST_NAME)}")
                 raise e
             
@@ -112,7 +112,7 @@ def get_shopping_list_data(target_dir="./recipes"):
     return lists, metas
 
 
-def get_merged_shopping_list(recipes: List[str], lists: dict[str, pd.DataFrame]):
+def get_merged_shopping_list(recipes: List[str], lists: Dict[str, pd.DataFrame]):
 
     # Merge and sort
     # -----------------------------------------------------------------
@@ -182,10 +182,11 @@ def get_merged_shopping_list(recipes: List[str], lists: dict[str, pd.DataFrame])
 def generate_shopping_list_md(recipes, main_sorted, secondary_sorted, output_dir="output"):
     """Generate markdown for the provided shopping list"""
 
+    print(f"generate_shopping_list_md: {recipes}")
     # TODO - convert decimal to fractions (e.g. 0.5 to 1/2, but with compact 1/2)
     md = ""
     md += "# Shopping List\n\n"
-    md += "For:\n"
+    md += "For:\n\n"
     for recipe in recipes:
         md += f"- {recipe}\n"
     md += "\n"

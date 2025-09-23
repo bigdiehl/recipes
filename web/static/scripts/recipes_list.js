@@ -14,7 +14,7 @@ recipeItems.forEach(item => {
         item.classList.add('active');
 
         // Fetch rendered markdown
-        fetch(`/markdown/api/${recipename}`)
+        fetch(`/markdown/recipe/${recipename}`)
             .then(res => res.json())
             .then(data => {
                 contentDiv.innerHTML = data.content;

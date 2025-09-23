@@ -1,43 +1,45 @@
 # Shopping List
 
 For:
-- honey_lime_enchiladas
+
 - cajun_chicken_linguine
-- clam_chowder
+- black_bean_and_pepper_jack_tostadas
+- italian_pork_sausage_gnocchi_bake
 
 ## Main List
 
 #### Dairy
 - butter (2 tablespoon)
 - cream (1 cup)
-- half and half (1 cup)
-- milk (2 cup)
-- pepper jack cheese (1 cup)
-- shredded cheese (1 dimensionless)
+- cream cheese (1 dimensionless)
+- pepper jack cheese (1 dimensionless)
+- shredded mozzarella (1 dimensionless)
+- sour cream (1 dimensionless)
 #### Fruit
-- lime (3)
+- lime (1)
 #### Meat
-- chicken breast (5)
-- minced clams (2 cans)
+- chicken breast (2)
+- pork sausage (2)
 #### Other
+- black beans (2 cans)
+- gnocchi (1 dimensionless)
 - linguine pasta (1 dimensionless)
+- tomato paste (1 dimensionless)
 - tortillas (1 dimensionless)
+- veggie stock concentrate (1 dimensionless)
 #### Vegetable
 - green pepper (1)
+- jalepeno (1)
+- red onion (2)
 - red pepper (1)
-- white onion (1)
-- yellow potatoes (2.5 cup)
+- roma tomato (4)
+- yellow onion (2)
 ----------
 
 ## Likely to Already Have
 
 #### Other
-- chicken bouillon (1 teaspoon)
-- cornstarch (2 tablespoon)
-- honey (3 tablespoon)
+- minced garlic (1 dimensionless)
 #### Spice
 - cajun seasoning (2 teaspoon)
-- chili powder (1 tablespoon)
-- garlic powder (0.5 tablespoon)
-- pepper (0.125 teaspoon)
-- thyme (0.25 teaspoon)
+- italian seasoning (1 dimensionless)

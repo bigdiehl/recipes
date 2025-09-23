@@ -18,14 +18,28 @@
                 data-bs-placement="top" 
                 title="Remove this recipe">
                     -
-            </button>
+            </button> 
         </div>
         {% endfor %}
     </div>
 </div>
 
+<div class="mb-3">
+    <div class="input-group">
+        <button id="emailListBtn" class="btn btn-primary">
+            Email List To
+        </button>
+        <input 
+            type="email" 
+            id="emailAddress" 
+            class="form-control" 
+            placeholder="Enter email" 
+            value="{{ user_email or 'katrina@higham.com; docdiehl@gmail.com' }}">
+    </div>
+</div>
+
 <div class="markdown-content" id="markdownContent">
-    <em>Select recipes to generate shopping list.</em>
+    {{ shopping_list_html|safe }}
 </div>
 
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
