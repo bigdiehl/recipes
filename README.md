@@ -63,3 +63,7 @@ Recipes
     - It will randomly select for next week. Update the "selected" field of the db
     - It will update the db field saying when the recipe was last chosen. 
         - Need to figure out what units that will be in. 
+
+
+TODO
+- Still need photo for butternut squash soup
