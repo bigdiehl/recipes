@@ -11,13 +11,14 @@ foods = [
     Food("pork sausage", FoodType.Meat),
     Food("minced clams", FoodType.Meat),
     Food(["salmon fillet", "salmon"], FoodType.Meat),
+    Food("bacon", FoodType.Meat),
     
     # Dairy
     Food("sour cream", FoodType.Dairy),
     Food("butter", FoodType.Dairy),
     Food("milk", FoodType.Dairy),
     Food(["cream", "heavy cream"], FoodType.Dairy),
-    Food("half and half", FoodType.Dairy), # TODO difference between cream? light cream?
+    Food(["half and half", "light cream"], FoodType.Dairy),
     Food("greek yogurt", FoodType.Dairy),
     Food("cream cheese", FoodType.Dairy),
     Food("shredded mozzarella", FoodType.Dairy),
@@ -37,6 +38,7 @@ foods = [
     Food("cucumber", FoodType.Vegetable),
     Food("yellow potatoes", FoodType.Vegetable),
     Food("jalepeno", FoodType.Vegetable),
+    Food("butternut squash", FoodType.Vegetable),
     
     # Fruits
     Food(["lime", "limes"], FoodType.Fruit),
@@ -68,7 +70,8 @@ foods = [
     Food("chicken bouillon", FoodType.Other, likely_to_have=True),
     Food(["linguine pasta", "flat pasta"], FoodType.Other),
     Food(["corkscrew pasta", "cavatappi pasta"], FoodType.Other),
-    Food(["cornstarch"], FoodType.Other, likely_to_have=True)
+    Food(["cornstarch"], FoodType.Other, likely_to_have=True),
+    Food("chicken bouillon", FoodType.Other, likely_to_have=True),
 ]
 
 def get_food(name: str) -> Union[Food, None]:
