@@ -1,0 +1,208 @@
+# Food registry
+# -------------
+# Each entry defines a known food and how it should behave on shopping lists.
+#
+# Fields:
+#   names           (required) List of aliases. The first name is the name used on the shopping
+#                   list. Names are case-insensitive. Fuzzy name matching is used, so it is not
+#                   necessary to include the plural of the name.
+#   category        (required) One of: MEAT, DAIRY, VEGETABLE, FRUIT, SPICE, BAKING, OTHER
+#   preferred_unit  Unit to convert quantities to on the shopping list (e.g. cup, lb).
+#                   Must be a unit recognised by Pint.
+#   min_amount      Minimum quantity (in preferred_unit) worth adding to the list.
+#   likely_to_have  true = ingredient will be moved to the secondary 'probably already have this'
+#                   section in the generated shopping list.
+
+# ---------------------------------------------------------------------------
+# Meat
+# ---------------------------------------------------------------------------
+- names: [chicken breast]
+  category: MEAT
+
+- names: [pork sausage]
+  category: MEAT
+
+- names: [minced clams]
+  category: MEAT
+
+- names: [salmon fillet, salmon]
+  category: MEAT
+
+- names: [bacon]
+  category: MEAT
+
+# ---------------------------------------------------------------------------
+# Dairy
+# ---------------------------------------------------------------------------
+- names: [sour cream]
+  category: DAIRY
+
+- names: [butter]
+  category: DAIRY
+
+- names: [milk]
+  category: DAIRY
+
+- names: [cream, heavy cream]
+  category: DAIRY
+
+- names: [half and half, light cream]
+  category: DAIRY
+
+- names: [greek yogurt]
+  category: DAIRY
+
+- names: [cream cheese]
+  category: DAIRY
+
+- names: [shredded mozzarella]
+  category: DAIRY
+
+- names: [shredded cheese]
+  category: DAIRY
+
+- names: [pepper jack cheese]
+  category: DAIRY
+
+# ---------------------------------------------------------------------------
+# Vegetables
+# ---------------------------------------------------------------------------
+- names: [red pepper]
+  category: VEGETABLE
+
+- names: [green pepper]
+  category: VEGETABLE
+
+- names: [green onion]
+  category: VEGETABLE
+
+- names: [poblano pepper]
+  category: VEGETABLE
+
+- names: [roma tomato]
+  category: VEGETABLE
+
+- names: [white onion, onion]
+  category: VEGETABLE
+
+- names: [yellow onion]
+  category: VEGETABLE
+
+- names: [red onion]
+  category: VEGETABLE
+
+- names: [cilantro]
+  category: VEGETABLE
+
+- names: [cucumber]
+  category: VEGETABLE
+
+- names: [yellow potatoe]
+  category: VEGETABLE
+
+- names: [jalepeno]
+  category: VEGETABLE
+
+- names: [butternut squash]
+  category: VEGETABLE
+
+# ---------------------------------------------------------------------------
+# Fruit
+# ---------------------------------------------------------------------------
+- names: [lime]
+  category: FRUIT
+
+- names: [lemon]
+  category: FRUIT
+
+# ---------------------------------------------------------------------------
+# Spices
+# ---------------------------------------------------------------------------
+- names: [cajun seasoning]
+  category: SPICE
+  likely_to_have: true
+
+- names: [chili powder]
+  category: SPICE
+  likely_to_have: true
+
+- names: [garlic powder]
+  category: SPICE
+  likely_to_have: true
+
+- names: [salt]
+  category: SPICE
+  likely_to_have: true
+
+- names: [thyme]
+  category: SPICE
+  likely_to_have: true
+
+- names: [pepper]
+  category: SPICE
+  likely_to_have: true
+
+- names: [italian seasoning]
+  category: SPICE
+  likely_to_have: true
+
+- names: [rosemary]
+  category: SPICE
+  likely_to_have: true
+
+# ---------------------------------------------------------------------------
+# Other
+# ---------------------------------------------------------------------------
+- names: [honey]
+  category: OTHER
+  likely_to_have: true
+
+- names: [egg, eggs]
+  category: OTHER
+
+- names: [veggie stock concentrate]
+  category: OTHER
+
+- names: [black beans]
+  category: OTHER
+
+- names: [tortillas]
+  category: OTHER
+
+- names: [minced garlic]
+  category: OTHER
+  likely_to_have: true
+
+- names: [bread crumbs]
+  category: OTHER
+
+- names: [yeast]
+  category: OTHER
+
+- names: [flour]
+  category: OTHER
+  preferred_unit: cup
+  min_amount: 2
+
+- names: [baking powder]
+  category: OTHER
+
+- names: [tomato paste]
+  category: OTHER
+
+- names: [gnocchi]
+  category: OTHER
+
+- names: [chicken bouillon]
+  category: OTHER
+  likely_to_have: true
+
+- names: [linguine pasta, flat pasta]
+  category: OTHER
+
+- names: [corkscrew pasta, cavatappi pasta]
+  category: OTHER
+
+- names: [cornstarch]
+  category: OTHER
+  likely_to_have: true
