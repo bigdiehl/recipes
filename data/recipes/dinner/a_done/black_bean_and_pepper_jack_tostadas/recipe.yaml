@@ -1,0 +1,24 @@
+name: Black Bean and Pepper Jack Tostadas
+servings: 4
+meal: dinner
+category: entree
+min_period_weeks: 4
+ingredients:
+  - food: roma tomatoes
+    quantity: 2
+  - food: red onions
+    quantity: 2
+  - food: lime
+    quantity: 1
+  - food: jalepeno
+    quantity: 1
+  - food: black beans
+    quantity: 2 cans
+  - food: mince garlic
+  - food: sour cream
+  - food: veggie stock concentrate
+  - food: tortillas
+  - food: pepper jack cheese
+
+  # test
+  - food: black beans

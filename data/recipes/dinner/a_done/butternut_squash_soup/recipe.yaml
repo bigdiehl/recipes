@@ -1,0 +1,24 @@
+name: Butternut Squash Soup
+servings: 4
+meal: dinner
+category: entree
+min_period_weeks: 4
+ingredients:
+  - food: butternut squash
+  - food: bacon
+  - food: onion
+    quantity: 1 cup
+  - food: yellow potatoes
+    quantity: 2.5 cups
+  - food: flour
+    quantity: 2 tbsp
+  - food: chicken bouillon
+    quantity: 1 teaspoon
+  - food: thyme
+    quantity: 1/4 tsp
+  - food: pepper
+    quantity: 1/8 tsp
+  - food: milk
+    quantity: 2 cups
+  - food: light cream
+    quantity: 1 cup
