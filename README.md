@@ -1,3 +1,23 @@
+## TODO 
+
+- Only load recipe if recipe.yaml and recipe.md are present
+    - Maybe we can generate something rudimentary from the recipe.yaml?
+
+- Do we plan on doing anything with meal, category?
+    - Should we be able to specify multiple meals? I.e. this dish is good for lunch of dinner?
+
+- Should we keep info like 'enabled' or 'min_period_weeks' in recipe.yaml? 
+
+- I would like to rename 'recipe list' to 'saved recipes'
+- Add new 'candidate recipes' page. (Or just combine with 'recipes' page?)
+- Group recipes. 
+
+- Add input to specify how many people you are shopping for. Scale recipe amounts accordingly
+- Add enable/disable and adjustment to min_period_weeks in web UI. Move these quantities to the UI json db.
+
+- Maybe define some custom unit rules for specific foods (e.g. x tbs == 1 stick for butter)
+
+
 
 ## Description
 
@@ -5,10 +25,11 @@ This repo:
 - stores recipe data in the 'recipes' directory 
 - contains functionality for generating a shopping list from that recipe data.
 - contains tools for sending out the list in an email report
+- contains a web interface
 
 ## Setup
 
-
+After cloning the repo, use the `uv sync` to add the necessary python dependencies 
 
 ## Recipes
 
