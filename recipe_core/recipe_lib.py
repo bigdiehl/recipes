@@ -68,8 +68,17 @@ def parse_quantity(raw: str):
     try:
         return ureg(raw)
     except pint_errors.UndefinedUnitError as e:
+        
+        words = raw.split(" ")
+        # Handle cases where we have a unit by no number. If 'raw' is just a number, it should have
+        # already been caught by 'ureg(raw)'.
+        if len(words) == 1 or len(words) > 2:
+            raise ValueError(f"Unable to parse quantity: '{raw}'." \
+                "A quantity should be a number optionally followed by a unit.")
+            
         # Unknown unit — register it as a base type and retry
-        _register_unit(raw)
+        unit_name = words[1]
+        _register_unit(unit_name)
         return ureg(raw)
 
 
@@ -250,30 +259,45 @@ class MergedIngredient:
             except Exception:
                 pass  # incompatible unit — leave as-is
 
-    def format_quantity(self, show_sources: bool = False) -> str:
+    def format_quantity(self, recipe_slugs: List[str]) -> str:
         """
-        Render the full quantity string for the shopping list.
+        Render the full quantity string for the shopping list. 'recipe_slugs' is the slugs for the
+        selected recipes. Used to number the sources.
 
-        Examples (show_sources=False):
-            "2 cans + 1 cup + unspecified (1)"
-        Examples (show_sources=True):
-            "2 cans (recipe_a, recipe_b) + 1 cup (recipe_c) + unspecified (recipe_d)"
+        Example: "2 cans + 1 cup + unspecified from [1]"
         """
         parts = []
 
         for group in self.quantities:
             s = group.format()
-            if show_sources and group.sources:
-                s += f" ({', '.join(group.sources)})"
             parts.append(s)
 
         if self.unspecified:
-            if show_sources:
-                parts.append(f"unspecified [{', '.join(self.unspecified)}]")
+            if len(parts) > 0:
+                sources = {slug: i for i, slug in enumerate(recipe_slugs)}
+                unspecified_sources = [f"[{sources[slug]+1}]" for slug in self.unspecified]
+                unspecified_sources = ", ".join(unspecified_sources)
+                parts.append(f"unspecified from {unspecified_sources}")
             else:
-                parts.append(f"unspecified [{len(self.unspecified)}]")
+                parts.append("")
 
         return " + ".join(parts) if parts else ""
+    
+    def format_sources(self, recipe_slugs: List[str]):
+        """Returns a formatted list of sources. 'recipe_slugs' is the slugs for the selected
+        recipes. Used to number the sources."""
+        all_sources = {slug: i for i, slug in enumerate(recipe_slugs)}
+        sources = set()
+
+        for q in self.quantities:
+            for s in q.sources:
+                sources.add(all_sources[s])
+        
+        for s in self.unspecified:
+            sources.add(all_sources[s])
+                
+        sources = sorted(sources)
+        return ", ".join(f"[{s+1}]" for s in sources)
 
     def is_above_min(self) -> bool:
         """
@@ -307,20 +331,21 @@ class RecipeIngredient(BaseModel):
     
 class RecipeData(BaseModel):
     """
-    Schema for the machine-readable recipe.yaml file that lives alongside
-    each recipe's markdown file.
+    Schema for the recipe.yaml file that lives alongside each recipe's markdown file. This data
+    is used in shopping list generation, and in rendering a recipe if recipe.md is not present. 
 
-    Example recipe.yaml
-    -------------------
-    name: Honey Lime Enchiladas
-    servings: 4
-    meal: dinner
-    category: entree
-    ingredients:
-      - food: chicken breast
-        quantity: "1 lb"
-      - food: tortillas
-        quantity: "12"
+    Attributes:
+        name:               Human-readable name of the recipe
+        servings:           Number of servings the recipe makes. 
+        meal:               Which meal this recipe is primarily intended for.
+        category:           ENTREE, SALAD, DESSERT, SIDE
+        ingredients:        A list of the ingredients for the recipe. These should be  more tailored 
+                            for the shopping list since this is the data that the list will be 
+                            generated from. 
+        min_period_weeks:   Minimum period in weeks to wait before having this recipe again. 
+        enabled:            Whether this recipe should be included in the shopping list generation. # TODO - should probably have this in web UI. User can enable/disable recipe. And also set the min period. 
+        instructions:       Optional list of instructions for the recipe. If recipe.md is not 
+                            present, these instructions will be used when rendering the recipe.
     """
 
     name: str
@@ -328,6 +353,9 @@ class RecipeData(BaseModel):
     meal: MealType
     category: CategoryType
     ingredients: List[RecipeIngredient]
+    min_period_weeks: int = 4 
+    enabled: bool = True
+    instructions: Optional[List[str]] = None
 
     @field_validator("meal", mode="before")
     @classmethod

@@ -1,0 +1,7 @@
+name: Test Recipe
+servings: 4
+meal: dinner
+category: entree
+min_period_weeks: 4
+ingredients:
+  - food: black beans

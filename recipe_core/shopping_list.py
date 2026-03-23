@@ -150,7 +150,6 @@ def get_merged_shopping_list(
 if 0:
     def generate_shopping_list_md(
         names: List[str],
-        recipes: List[str],
         main: Dict[str, List[MergedIngredient]],
         secondary: Dict[str, List[MergedIngredient]],
         show_sources: bool = False,
@@ -167,7 +166,7 @@ if 0:
         """
 
         def _format_line(mi: MergedIngredient) -> str:
-            qty_str = mi.format_quantity(show_sources=show_sources)
+            qty_str = mi.format_quantity()
             if qty_str:
                 return f"- {mi.food.get_name()} ({qty_str})\n"
             return f"- {mi.food.get_name()}\n"
@@ -195,7 +194,7 @@ if 0:
 else:
     def generate_shopping_list_md(
         names: List[str],
-        recipes: List[str],
+        slugs: List[str],
         main: Dict[str, List[MergedIngredient]],
         secondary: Dict[str, List[MergedIngredient]],
         show_sources: bool = False,
@@ -204,10 +203,12 @@ else:
         Render the shopping list as a Markdown string.
 
         Args:
-            recipes:      Slugs of the selected recipes (for the header).
-            main:         Primary shopping list grouped by category.
-            secondary:    'Likely to already have' list grouped by category.
-            show_sources: If True, annotate each quantity with which recipe it came from.
+            names:          Human readable names of recipes
+            recipes:        Slugs of the selected recipes.
+            main:           Primary shopping list grouped by category.
+            secondary:      'Likely to already have' list grouped by category.
+            show_sources:   If True, add an additional column to the table showing which recipe(s) 
+                            each ingredient came from.
         """
 
         def _section(heading: str, data: Dict[str, List[MergedIngredient]]) -> str:
@@ -215,11 +216,14 @@ else:
             rows = []
             for category, ingredients in data.items():
                 for mi in ingredients:
-                    rows.append((
+                    new_rows = [
                         category,
                         mi.food.get_name(),
-                        mi.format_quantity(show_sources=show_sources),
-                    ))
+                        mi.format_quantity(slugs),
+                    ]
+                    if show_sources:
+                        new_rows.append(mi.format_sources(slugs))
+                    rows.append(new_rows)
 
             if not rows:
                 return ""
@@ -227,24 +231,40 @@ else:
             w_cat  = max(max(len(r[0]) for r in rows), len("Category"))
             w_name = max(max(len(r[1]) for r in rows), len("Ingredient"))
             w_qty  = max(max(len(r[2]) for r in rows), len("Quantity"))
-
-            header    = f"| {'Category':<{w_cat}} | {'Ingredient':<{w_name}} | {'Quantity':<{w_qty}} |"
-            separator = f"| {'-' * w_cat} | {'-' * w_name} | {'-' * w_qty} |"
-            lines     = [header, separator]
-            last_cat = None
-            for cat, name, qty in rows:
-                display_cat = cat if cat != last_cat else ""
-                last_cat = cat
-                lines.append(f"| {display_cat:<{w_cat}} | {name:<{w_name}} | {qty:<{w_qty}} |")
+            
+            if show_sources:
+                w_src  = max(max(len(r[3]) for r in rows), len("Sources"))
+                
+                header    = f"| {'Category':<{w_cat}} | {'Ingredient':<{w_name}} | {'Quantity':<{w_qty}} | {'Sources':<{w_src}} |"
+                separator = f"| {'-' * w_cat} | {'-' * w_name} | {'-' * w_qty} | {'-' * w_src} |"
+                
+                lines = [header, separator]
+                last_cat = None
+                for cat, name, qty, src in rows:
+                    display_cat = cat if cat != last_cat else ""
+                    last_cat = cat
+                    lines.append(f"| {display_cat:<{w_cat}} | {name:<{w_name}} | {qty:<{w_qty}} | {src:<{w_src}} |")
+                
+            else:
+                header    = f"| {'Category':<{w_cat}} | {'Ingredient':<{w_name}} | {'Quantity':<{w_qty}} |"
+                separator = f"| {'-' * w_cat} | {'-' * w_name} | {'-' * w_qty} |"
+                
+                lines = [header, separator]
+                last_cat = None
+                for cat, name, qty in rows:
+                    display_cat = cat if cat != last_cat else ""
+                    last_cat = cat
+                    lines.append(f"| {display_cat:<{w_cat}} | {name:<{w_name}} | {qty:<{w_qty}} |")
 
             return f"## {heading}\n\n" + "\n".join(lines) + "\n\n"
 
         md = "# Shopping List\n\n"
-        md += "For:\n\n"
+        md += "Recipes:\n\n"
         for i, name in enumerate(names):
             md += f"[{i+1}] {name}<br>\n"
         md += "\n"
         md += _section("Main List", main)
+        md += "<br>\n"
         md += _section("Likely to Already Have", secondary)
 
         return md
@@ -261,17 +281,22 @@ if __name__ == "__main__":
 
     recipes = [
         "black_bean_and_pepper_jack_tostadas",
-        "black_bean_and_pepper_jack_tostadas",
         "butternut_squash_soup",
-        # "cajun_chicken_linguine",
-        # "clam_chowder",
+        "test_recipe"
     ]
 
-    ingredients_by_recipe, metadata_by_recipe = get_shopping_list_data()
+    target_dir = os.path.join(os.path.dirname(__file__), 'test')
+    ingredients_by_recipe, metadata_by_recipe = get_shopping_list_data(target_dir=target_dir)
     main, secondary = get_merged_shopping_list(recipes, ingredients_by_recipe)
     
     names = [metadata_by_recipe[slug].name for slug in recipes]
-    md = generate_shopping_list_md(names, recipes, main, secondary)
+    md = generate_shopping_list_md(
+        names, 
+        recipes,
+        main, 
+        secondary, 
+        show_sources=True
+    )
 
     output_dir = "output"
     os.makedirs(output_dir, exist_ok=True)
