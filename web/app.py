@@ -1,218 +1,337 @@
-
+import json
+import logging
 import os
 import os.path as osp
-from flask import Flask, render_template, abort, jsonify, send_from_directory, request
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.utils import secure_filename
-import markdown
+from pathlib import Path
 import re
-import sys
+from dataclasses import dataclass
 
-# Get the absolute path of the current script's directory
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(parent_dir)
+import markdown
+import yaml
+from flask import Flask, abort, jsonify, render_template, request, send_from_directory, session
 
-from shopping_list import get_shopping_list_data, get_merged_shopping_list, generate_shopping_list_md
-# from email.send_email import build_message, send_email
+from recipe_core.recipe_lib import RecipeData
+from recipe_core.shopping_list import (
+    find_recipe_dirs,
+    generate_shopping_list_md,
+    get_merged_shopping_list,
+    get_shopping_list_data
+)
+# from recipe_importer import ImportResult, discard_pending, extract_recipe, promote_recipe, save_pending
 
-lists, metas = get_shopping_list_data()
+logger = logging.getLogger(__name__)
 
-db = SQLAlchemy()
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
 
-class Recipe(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False) # Human formatted name
-    dir = db.Column(db.String(200), nullable=False) # relative to 'recipes' dir
-    md_filename = db.Column(db.String(200), nullable=False) 
-    selected = db.Column(db.Boolean, default=False)
-    weeks_since_last = db.Column(db.Integer, default=1)
+_this_dir = os.path.dirname(__file__)
+with open(os.path.join(_this_dir, "config.yaml")) as f:
+    config = yaml.safe_load(f)
 
-# -----------------------------------------------------------------------
+RECIPES_DIR = os.path.join(_this_dir, config["app"]["recipes_dir"])
+PENDING_DIR = os.path.join(_this_dir, config["app"]["pending_dir"])
+STATE_FILE  = os.path.join(_this_dir, config["app"]["state_file"])
+OUTPUT_DIR  = os.path.join(_this_dir, config["app"]["output_dir"])
 
-RECIPES_DIR = os.path.join(os.path.dirname(__file__), 'recipes')
+# ---------------------------------------------------------------------------
+# Recipe dataclass
+# ---------------------------------------------------------------------------
 
-def find_markdown_files(target_dir):
-    md_files = []
-    for root, dirs, files in os.walk(target_dir):
-        for file in files:
-            if file.endswith('.md'):
-                md_files.append(os.path.join(root, file))
-    return md_files
+@dataclass
+class Recipe:
+    slug:             str
+    name:             str
+    md_filename:      str
+    path:             str
+    selected:         bool = False
+    weeks_since_last: int  = 1
 
-def get_recipe_names():
-    """Converts recipe dir names to space-seperated and capitalized names. Assumes recipe dir
-    name is underscore delimited."""
-    md_files = find_markdown_files(RECIPES_DIR)
-    names = []
-    for name in md_files:
-        name: str = os.path.basename(os.path.dirname(name)).lower()
-        name = name.replace("_", " ")
-        name = name.title()
-        names.append(name)
-    return names
-
-def import_recipes():
-
-    md_files = find_markdown_files(RECIPES_DIR)
-    recipe_names = get_recipe_names()
-
-    for idx in range(len(recipe_names)):
-
-        name = recipe_names[idx]
-        existing = Recipe.query.filter_by(name=name).first()
-
-        # Get path relative to the 'recipes' dir
-        recipe_dir_name = os.path.dirname(md_files[idx])
-        recipe_dir_name = re.sub(RECIPES_DIR, "", recipe_dir_name)
-        if recipe_dir_name[0] == "/":
-            recipe_dir_name = recipe_dir_name[1:]
-
-        if existing:
-            print(f"'{name}' already in database.")
-            if existing.dir != recipe_dir_name:
-                existing.dir = recipe_dir_name
-                print(f"Updating path to {recipe_dir_name}")
-        else:
-
-            recipe = Recipe(
-                name=name,
-                dir=recipe_dir_name,
-                md_filename=os.path.basename(md_files[idx])
-            )
-            db.session.add(recipe)
-            print(f"Added '{name}' to database")
-
-        # TODO - remove database entries that are no longer present in filesystem.
-
-    db.session.commit()
-    print("Import complete.")
-
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# App setup
+# ---------------------------------------------------------------------------
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'  # SQLite file
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
 
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# State file (JSON) — persists stateful data like 'selected' and 'weeks_since_last'
+# ---------------------------------------------------------------------------
 
-def get_shopping_list_html():
-    recipes = Recipe.query.all()
-    selected_recipes = [recipe for recipe in recipes if recipe.selected]
-    selected_names = [r.name.replace(" ","_").lower() for r in selected_recipes]
-    print(selected_names)
-    
-    if len(selected_names) == 0:
+def _load_state() -> dict:
+    """Load state from JSON file. Returns empty dict if file doesn't exist."""
+    if osp.exists(STATE_FILE):
+        with open(STATE_FILE) as f:
+            return json.load(f)
+    return {}
+
+def _save_state(state: dict):
+    """Write state dict to JSON file."""
+    os.makedirs(osp.dirname(STATE_FILE), exist_ok=True)
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f, indent=2)
+
+# ---------------------------------------------------------------------------
+# Recipe store — filesystem + state file
+# ---------------------------------------------------------------------------
+
+def _find_md_file(recipe_dir: str) -> str:
+    """Return the first markdown file found in recipe_dir, or empty string."""
+    for f in os.listdir(recipe_dir):
+        if f.endswith(".md"):
+            return f
+    return ""
+
+def get_all_recipes() -> list[Recipe]:
+    """
+    Build the current recipe list from the filesystem, enriched with
+    stateful fields (selected, weeks_since_last) from the state file.
+    Slugs present in the state file but no longer on disk are ignored.
+    """
+    state = _load_state()
+    recipes = []
+
+    for recipe_dir in find_recipe_dirs(RECIPES_DIR):
+        path = Path(recipe_dir).relative_to(RECIPES_DIR)
+        slug = osp.basename(recipe_dir)
+        entry = state.get(slug, {})
+        recipes.append(Recipe(
+            slug             = slug,
+            path             = str(path),
+            name             = slug.replace("_", " ").title(),
+            md_filename      = _find_md_file(recipe_dir),
+            selected         = entry.get("selected", False),
+            weeks_since_last = entry.get("weeks_since_last", 1),
+        ))
+
+    return recipes
+
+def _update_state(slug: str, **kwargs):
+    """Merge kwargs into the state entry for slug and save."""
+    state = _load_state()
+    entry = state.get(slug, {})
+    entry.update(kwargs)
+    state[slug] = entry
+    _save_state(state)
+
+# ---------------------------------------------------------------------------
+# Shopping list helpers
+# ---------------------------------------------------------------------------
+
+_shopping_list_cache: dict = {}
+
+def _get_shopping_list_data():
+    """Return cached shopping list data, loading from disk if needed."""
+    if not _shopping_list_cache:
+        lists, metas = get_shopping_list_data(RECIPES_DIR)
+        _shopping_list_cache["lists"] = lists
+        _shopping_list_cache["metas"] = metas
+    return _shopping_list_cache["lists"], _shopping_list_cache["metas"]
+
+def _invalidate_shopping_list_cache():
+    _shopping_list_cache.clear()
+
+def get_shopping_list_html(show_sources: bool = True) -> str:
+    selected_slugs = [r.slug for r in get_all_recipes() if r.selected]
+
+    if not selected_slugs:
         return "<em>Select recipes to generate shopping list.</em>"
-    
-    main, secondary = get_merged_shopping_list(selected_names, lists)
-    md = generate_shopping_list_md(selected_names, main, secondary)
-    
-    output_dir="../output"
-    with open(osp.join(output_dir, "shopping_list.md"), "w") as f:
-        f.write(md)
-    
-    html_content = markdown.markdown(md)
-    return html_content
 
-@app.route('/')
+    lists, metas = _get_shopping_list_data()
+    
+    main, secondary = get_merged_shopping_list(selected_slugs, lists)
+    
+    names = [metas[slug].name for slug in selected_slugs]
+    md = generate_shopping_list_md(names, selected_slugs, main, secondary, show_sources=show_sources)
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(osp.join(OUTPUT_DIR, "shopping_list.md"), "w") as f:
+        f.write(md)
+
+    return markdown.markdown(md, extensions=["tables"])
+
+# ---------------------------------------------------------------------------
+# Routes — home
+# ---------------------------------------------------------------------------
+
+@app.route("/")
 def index():
-    recipes = Recipe.query.all()
-    selected_recipes = [recipe for recipe in recipes if recipe.selected]
+    recipes = get_all_recipes()
+    selected = sorted([r for r in recipes if r.selected], key=lambda r: r.name)
     return render_template(
-        'index.html', 
-        active_page="home", 
-        recipes=sorted(selected_recipes, key=lambda x: x.name),
-        shopping_list_html = get_shopping_list_html()
+        "index.html",
+        active_page="home",
+        recipes=selected,
+        shopping_list_html=get_shopping_list_html(),
     )
 
-@app.route('/deselect/<int:recipe_id>', methods=['POST'])
-def deslect(recipe_id):
-    recipe = Recipe.query.get_or_404(recipe_id)
-    recipe.selected = False
-    db.session.commit()
-    return jsonify({'success': True, 'selected': recipe.selected})
+@app.route("/deselect/<slug>", methods=["POST"])
+def deselect(slug):
+    _update_state(slug, selected=False)
+    _invalidate_shopping_list_cache()
+    return jsonify({"success": True, "selected": False})
 
-@app.route('/markdown/shopping_list')
+@app.route("/markdown/shopping_list")
 def update_shopping_list_html():
-    html = get_shopping_list_html()
-    return jsonify({"html": html})
-    
+    show_sources = request.args.get("show_sources", "false").lower() == "true"
+    return jsonify({"html": get_shopping_list_html(show_sources=show_sources)})
+
 @app.route("/send_list", methods=["POST"])
 def send_list():
     data = request.get_json()
     email = data.get("email")
+    # TODO: wire up email sending (Flask-Mail / SendGrid / smtplib)
+    logger.info("Sending shopping list to %s", email)
+    return jsonify({"success": True})
 
-    # Generate shopping list HTML or Markdown
-    shopping_list_html = get_shopping_list_html()  # replace with your function
+# ---------------------------------------------------------------------------
+# Routes — recipe list
+# ---------------------------------------------------------------------------
 
-    # TODO: actually send email (e.g., Flask-Mail, smtplib, or an API like SendGrid)
-    # success = send_email(to=email, subject="Your Shopping List", body=shopping_list_html)
-    success=True
-    print(f"sending email to {email}")
-
-    return jsonify({"success": success})
-# -----------------------------------------------------------------------
-
-@app.route('/recipes_list')
+@app.route("/recipes_list")
 def recipes_list():
-    recipes = Recipe.query.all()
+    recipes = sorted(get_all_recipes(), key=lambda r: r.name)
+    return render_template("recipes_list.html", recipes=recipes, active_page="recipes_list")
 
-    return render_template(
-        'recipes_list.html', 
-        recipes=sorted(recipes, key=lambda x: x.name), 
-        active_page="recipes_list", 
-    )
+@app.route("/recipes_list/toggle/<slug>", methods=["POST"])
+def toggle(slug):
+    recipes = get_all_recipes()
+    recipe = next((r for r in recipes if r.slug == slug), None)
+    if recipe is None:
+        abort(404)
+    new_selected = not recipe.selected
+    _update_state(slug, selected=new_selected)
+    _invalidate_shopping_list_cache()
+    return jsonify({"success": True, "selected": new_selected})
 
-@app.route('/recipes_list/toggle/<int:recipe_id>', methods=['POST'])
-def toggle(recipe_id):
-    recipe = Recipe.query.get_or_404(recipe_id)
-    recipe.selected = not recipe.selected
-    db.session.commit()
-    return jsonify({'success': True, 'selected': recipe.selected})
+@app.route("/recipes/<path:file>")
+def serve_recipe_file(file):
+    recipes = get_all_recipes()
+    slug, file = file.split("/", 1)
+    recipe = next((r for r in recipes if r.slug == slug), None)
+    if recipe is None:
+        abort(404)
+    return send_from_directory(osp.join(RECIPES_DIR, recipe.path), file)
 
-@app.route('/recipes/<path:file>')
-def serve_markdown_file(file):
-    return send_from_directory("recipes", file)
-
-@app.route('/markdown/recipe/<recipe>')
-def get_markdown_recipe(recipe):
-
-    recipe = Recipe.query.filter_by(name=recipe).first()
-    md_file = os.path.join("recipes", recipe.dir, recipe.md_filename)
-    print(f"Serving md_file={md_file}")
-
-    if not md_file.endswith('.md'):
-        print(f"File must end with .md,  got {md_file}.")
+@app.route("/markdown/recipe/<recipe_name>")
+def get_markdown_recipe(recipe_name):
+    recipes = get_all_recipes()
+    recipe = next((r for r in recipes if r.name == recipe_name), None)
+    if recipe is None:
         abort(404)
 
-    if not os.path.exists(md_file):
+    md_file = osp.join(RECIPES_DIR, recipe.path, recipe.md_filename)
+    if not md_file.endswith(".md") or not osp.exists(md_file):
         abort(404)
 
-    with open(md_file, 'r', encoding='utf-8') as f:
+    with open(md_file, "r", encoding="utf-8") as f:
         md_content = f.read()
 
-        html_content = markdown.markdown(md_content)
+    html_content = markdown.markdown(md_content)
+    html_content = re.sub(
+        r'src="([^":]+)"',
+        lambda m: f'src="recipes/{recipe.slug}/{m.group(1)}"',
+        html_content,
+    )
+    return jsonify({"filename": md_file, "content": html_content})
 
-        # Replace relative image src paths to use the markdown file server route
-        html_content = re.sub(
-            r'src="([^":]+)"',  # match src="something" that is not a full URL
-            lambda m: f'src="recipes/{recipe.dir}/{m.group(1)}"',
-            html_content
+# ---------------------------------------------------------------------------
+# Routes — AI recipe import
+# ---------------------------------------------------------------------------
+
+@app.route("/import", methods=["GET"])
+def import_page():
+    return render_template("import.html", active_page="import")
+
+# @app.route("/import/extract", methods=["POST"])
+# def import_extract():
+#     """Step 1: extract recipe via Claude and return a preview."""
+#     data = request.get_json()
+#     url  = (data.get("url")  or "").strip() or None
+#     text = (data.get("text") or "").strip() or None
+
+#     if not url and not text:
+#         return jsonify({"error": "Provide a URL or pasted text."}), 400
+
+#     try:
+#         result = extract_recipe(url=url, text=text)
+#     except Exception as e:
+#         logger.error("Extraction failed: %s", e)
+#         return jsonify({"error": str(e)}), 500
+
+#     session["pending_import"] = {
+#         "recipe_data": result.recipe_data.model_dump(mode="json"),
+#         "markdown":    result.markdown,
+#         "slug":        result.slug,
+#         "source":      result.source,
+#     }
+
+#     return jsonify({
+#         "recipe":           result.recipe_data.model_dump(mode="json"),
+#         "markdown_preview": result.markdown,
+#         "slug":             result.slug,
+#         "source":           result.source,
+#     })
+
+# @app.route("/import/confirm", methods=["POST"])
+# def import_confirm():
+#     """Step 2: save the previewed recipe to pending/."""
+#     pending = session.get("pending_import")
+#     if not pending:
+#         return jsonify({"error": "No pending import found. Please extract first."}), 400
+
+#     result = ImportResult(
+#         recipe_data=RecipeData(**pending["recipe_data"]),
+#         markdown=pending["markdown"],
+#         slug=pending["slug"],
+#         source=pending["source"],
+#     )
+
+#     try:
+#         save_pending(result, pending_dir=PENDING_DIR)
+#     except Exception as e:
+#         logger.error("Failed to save pending recipe: %s", e)
+#         return jsonify({"error": str(e)}), 500
+
+#     session.pop("pending_import", None)
+#     return jsonify({"success": True, "slug": result.slug})
+
+# ---------------------------------------------------------------------------
+# Routes — pending recipes
+# ---------------------------------------------------------------------------
+
+@app.route("/pending")
+def pending_list():
+    slugs = []
+    if osp.exists(PENDING_DIR):
+        slugs = sorted(
+            d for d in os.listdir(PENDING_DIR)
+            if osp.isdir(osp.join(PENDING_DIR, d))
         )
-        # print(html_content)
+    return render_template("pending.html", slugs=slugs, active_page="import")
 
-    return jsonify({
-        'filename': md_file,
-        'content': html_content
-    })
+@app.route("/pending/promote/<slug>", methods=["POST"])
+def promote(slug):
+    try:
+        promote_recipe(slug, pending_dir=PENDING_DIR, recipes_dir=RECIPES_DIR)
+        _invalidate_shopping_list_cache()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"success": True})
 
-if __name__ == '__main__':
-    # TODO - add recipe import. Just have it run here when we start the app.
-    with app.app_context():
-        db.create_all()
-        import_recipes()
-        # To view database contents from CLI, use sqlite3 and the command 'SELECT * FROM recipe;'
-        # sqlite3 instance/app.db 'SELECT * FROM recipe;'
-            
-    app.run(host='0.0.0.0', port=5000, debug=True)
+@app.route("/pending/discard/<slug>", methods=["POST"])
+def discard(slug):
+    try:
+        discard_pending(slug, pending_dir=PENDING_DIR)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"success": True})
+
+# ---------------------------------------------------------------------------
+# Startup
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    os.makedirs(PENDING_DIR, exist_ok=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

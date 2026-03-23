@@ -1,46 +1,21 @@
+$(document).ready(function () {
 
-
-// document.addEventListener('DOMContentLoaded', function() {
-//     document.querySelectorAll('.remove-recipe').forEach(function(btn) {
-//         btn.addEventListener('click', function() {
-//             this.closest('.recipe-item').remove();
-//         });
-//     });
-// });
-
-// Render Markdown shopping list for selected recipe
-// document.querySelectorAll(".recipe-item").forEach(btn => {
-//     btn.addEventListener("click", () => {
-//     fetch("/markdown/shopping_list")
-//     .then(res => res.json())
-//     .then(data => {
-//         document.getElementById("markdownContent").innerHTML = data.html;
-//     });
-//     });
-// });
-
-// Initialize Bootstrap tooltips
-document.addEventListener('DOMContentLoaded', function () {
+    // Initialize Bootstrap tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.forEach(function (tooltipTriggerEl) {
         new bootstrap.Tooltip(tooltipTriggerEl);
     });
-});
 
-// Remove logic with AJAX
-$(document).ready(function () {
+    // Remove recipe and refresh shopping list
     $('.remove-recipe').click(function () {
         const button = $(this);
-        const recipeId = button.data('id');
+        const recipeSlug = button.data('id');
 
-        $.post(`/deselect/${recipeId}`, function (data) {
+        $.post(`/deselect/${recipeSlug}`, function (data) {
             if (data.success) {
-
-                 // Dispose tooltip before removing element
+                // Dispose tooltip before removing element
                 const tooltip = bootstrap.Tooltip.getInstance(button[0]);
-                if (tooltip) {
-                    tooltip.dispose();
-                }
+                if (tooltip) tooltip.dispose();
 
                 button.closest('.recipe-item').remove();
 
@@ -48,17 +23,14 @@ $(document).ready(function () {
                     .then(res => res.json())
                     .then(data => {
                         document.getElementById("markdownContent").innerHTML = data.html;
-                });
-
+                    });
             } else {
-                alert('Toggle failed.');
+                alert('Remove failed.');
             }
         });
-
     });
-});
 
-$(document).ready(function () {
+    // Email shopping list
     $("#emailListBtn").on("click", function () {
         const email = $("#emailAddress").val();
 
@@ -79,4 +51,5 @@ $(document).ready(function () {
             }
         });
     });
+
 });

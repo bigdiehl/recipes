@@ -13,7 +13,7 @@
             <button 
                 type="button" 
                 class="btn {{ 'btn-primary' if recipe.selected else 'btn-success' }} btn-sm add-recipe" 
-                data-id="{{ recipe.id }}" 
+                data-id="{{ recipe.slug }}"
                 data-selected="{{ recipe.selected }}"
                 data-bs-toggle="tooltip" 
                 data-bs-placement="top" 

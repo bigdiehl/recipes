@@ -1,0 +1,5 @@
+app:
+  recipes_dir: ../data/recipes/saved
+  pending_dir: ../data/recipes/pending
+  state_file: instance/state.json
+  output_dir: ../output
