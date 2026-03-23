@@ -131,7 +131,7 @@ def _get_shopping_list_data():
 def _invalidate_shopping_list_cache():
     _shopping_list_cache.clear()
 
-def get_shopping_list_html(show_sources: bool = True) -> str:
+def get_shopping_list_html(show_sources: bool = False) -> str:
     selected_slugs = [r.slug for r in get_all_recipes() if r.selected]
 
     if not selected_slugs:

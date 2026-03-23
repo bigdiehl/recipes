@@ -1,7 +1,22 @@
 name: Moraccan Chickpea And Apricot Tagine
 servings: null
-category: null
-meal: null
-enabled: true
+category: ENTREE
+meal: DINNER
 min_period_weeks: 4
 ingredients: []
+  # - food: Israeli Couscous  
+  # - food: Veggie stock concentrate
+  # - food: chickpeas  
+  #   quantity: 2 cans
+  # - food: lemons
+  #   quantity: 2
+  # - food: Zucchinis
+  #   quantity: 2
+  # - food: yellow onions
+  #   quantity: 2
+  # - food: Tunisian Spice Blend
+  # - food: Dried apricots  
+  # - food: Minced Garlic
+  # - food: Sour cream  
+  # - food: Cilantro  
+  # - food: Hot sauce

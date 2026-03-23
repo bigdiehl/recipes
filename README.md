@@ -17,7 +17,17 @@
 
 - Maybe define some custom unit rules for specific foods (e.g. x tbs == 1 stick for butter)
 
+- Would like to format markdown a bit. E.g. make headings more visually distinct.
 
+- Better error handling and logging of those errors
+    - E.g. if there is an error loading a recipe, keep going, don't include recipe in UI, and log the error. 
+    - I can come and check the error, or go to a custom route. Figure it out from there. 
+    ==moraccan_chickpea_and_apricot_tagine== is currently not working. Can test on this. 
+
+Eventually I think I want to have the app running on Frank or similar, and then have the recipes in a shared drive that I can edit from any computer.
+
+- Lookup spice blend and list out the spices needed in shopping list.
+- Maybe I should make a whole new section named "Spices" since they are pretty much all "likely to have".
 
 ## Description
 
