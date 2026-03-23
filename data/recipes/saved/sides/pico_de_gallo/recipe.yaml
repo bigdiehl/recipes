@@ -1,0 +1,14 @@
+name: Pico De Gallo
+servings: 4
+category: SIDE
+meal: DINNER
+min_period_weeks: 4
+ingredients:
+- food: roma tomato
+  quantity: '4'
+- food: white onion
+  quantity: '1'
+- food: cilantro
+  quantity: 1 bundle
+- food: lime
+  quantity: '1'

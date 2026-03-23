@@ -1,0 +1,13 @@
+name: Tzatziki Sauce
+servings: 4
+category: SIDE
+meal: DINNER
+min_period_weeks: 4
+ingredients:
+- food: greek yogurt
+  quantity: 1 tub
+- food: cucumber
+  quantity: '1'
+- food: minced garlic
+- food: lemon
+  quantity: '1'

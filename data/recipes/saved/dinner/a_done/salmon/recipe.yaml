@@ -1,0 +1,16 @@
+name: Salmon
+servings: 4
+category: entree
+meal: dinner
+enabled: true
+min_period_weeks: 5
+ingredients:
+- food: salmon fillet
+  quantity: '1'
+- food: onion
+  quantity: '1'
+- food: lemon
+  quantity: '1'
+- food: butter
+- food: minced garlic
+- food: rosemary

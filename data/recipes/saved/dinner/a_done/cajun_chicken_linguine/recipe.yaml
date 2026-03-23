@@ -1,0 +1,18 @@
+name: Cajun Chicken Linguine
+servings: 4
+category: entree
+meal: dinner
+ingredients:
+- food: chicken breast
+  quantity: '2'
+- food: cajun seasoning
+  quantity: 2 tsp
+- food: butter
+  quantity: 2 tbsp
+- food: red pepper
+  quantity: '1'
+- food: green pepper
+  quantity: '1'
+- food: heavy cream
+  quantity: 1 cup
+- food: linguine pasta

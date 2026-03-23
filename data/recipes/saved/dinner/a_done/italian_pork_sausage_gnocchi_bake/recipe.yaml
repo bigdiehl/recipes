@@ -1,0 +1,18 @@
+name: Italian Pork Sausage Gnocchi Bake
+servings: 4
+category: entree
+meal: dinner
+enabled: false
+min_period_weeks: 4
+ingredients:
+- food: yellow onion
+  quantity: '2'
+- food: roma tomato
+  quantity: '2'
+- food: pork sausage
+  quantity: '2'
+- food: italian seasoning
+- food: tomato paste
+- food: cream cheese
+- food: gnocchi
+- food: shredded mozzarella

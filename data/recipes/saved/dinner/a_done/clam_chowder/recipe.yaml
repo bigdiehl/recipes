@@ -1,0 +1,25 @@
+name: Clam Chowder
+servings: 4
+category: entree
+meal: dinner
+enabled: true
+min_period_weeks: 4
+ingredients:
+- food: onion
+  quantity: '1'
+- food: yellow potatoes
+  quantity: 2.5 cups
+- food: cornstarch
+  quantity: 2 tbsp
+- food: chicken bouillon
+  quantity: 1 tsp
+- food: thyme
+  quantity: 1/4 tsp
+- food: pepper
+  quantity: 1/8 tsp
+- food: milk
+  quantity: 2 cups
+- food: half and half
+  quantity: 1 cup
+- food: minced clams
+  quantity: 2 cans

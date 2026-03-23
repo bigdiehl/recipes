@@ -1,0 +1,20 @@
+name: Honey Lime Enchiladas
+servings: 4
+category: entree
+meal: dinner
+enabled: true
+ingredients:
+- food: honey
+  quantity: 3 tbsp
+- food: limes
+  quantity: '3'
+- food: chili powder
+  quantity: 1 tbsp
+- food: garlic powder
+  quantity: 1/2 tbsp
+- food: chicken breast
+  quantity: '3'
+- food: tortillas
+- food: shredded cheese
+- food: pepper jack cheese
+  quantity: 1 cup

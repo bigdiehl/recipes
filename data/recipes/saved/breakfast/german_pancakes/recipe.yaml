@@ -1,0 +1,26 @@
+name: German Pancakes
+servings: 3
+meal: BREAKFAST
+category: ENTREE
+ingredients: 
+  - food: eggs
+    quantity: 6
+  - food: milk
+    quantity: 1 cup
+  - food: flour
+    quantity: 1 cup
+  - food: salt
+    quantity: 1 dash
+  - food: vanilla extract
+    quantity: 1 tsp
+  - food: butter
+    quantity: 5 tablespoons
+directions:
+  - Preheat oven to `425 degrees` F.
+  - As oven preheats, put the butter in an un-greased 9x13-in. metal 
+      baking dish and place in oven, just until melted.
+  - Place the eggs, milk, flour, salt and vanilla in a blender; cover and
+      process until smooth. Pour batter into baking dish, over melted butter.
+  - Bake, for `22-27 minutes` or until edges are golden brown and puffy.
+  - To serve, sprinkle generously with powdered sugar and syrup.
+

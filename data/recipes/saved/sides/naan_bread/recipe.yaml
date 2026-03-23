@@ -1,0 +1,21 @@
+name: Naan Bread
+servings: 4
+category: SIDE
+meal: DINNER
+min_period_weeks: 6
+ingredients:
+- food: honey
+  quantity: 2 tbsp
+- food: yeast
+- food: flour
+  quantity: 3.5 cups
+- food: greek yogurt
+  quantity: 1/4 cup
+- food: salt
+  quantity: 2 tsp
+- food: baking powder
+  quantity: 1/2 tsp
+- food: butter
+  quantity: 1/4 cup
+- food: minced garlic
+- food: cilantro
