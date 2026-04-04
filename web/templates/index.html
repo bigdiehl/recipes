@@ -50,7 +50,18 @@
     {{ shopping_list_html|safe }}
 </div>
 
+<div class="text-center mt-4 mb-4 shopping-list-content">
+    <button id="printListBtn" class="btn btn-primary no-print">
+        Download as PDF
+    </button>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="{{ url_for('static', filename='scripts/shopping_list.js') }}"></script>
+<script>
+    document.getElementById('printListBtn').addEventListener('click', function() {
+        window.location.href = '/download_shopping_list_pdf';
+    });
+</script>
 
 {% endblock %}

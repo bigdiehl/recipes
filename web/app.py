@@ -5,10 +5,13 @@ import os.path as osp
 from pathlib import Path
 import re
 from dataclasses import dataclass
+from datetime import date
+from io import BytesIO
 
 import markdown
 import yaml
-from flask import Flask, abort, jsonify, render_template, request, send_from_directory, session
+from flask import Flask, abort, jsonify, render_template, request, send_from_directory, send_file, session
+from weasyprint import HTML, CSS
 
 from recipe_core.recipe_lib import RecipeData
 from recipe_core.shopping_list import (
@@ -205,6 +208,162 @@ def send_list():
     # TODO: wire up email sending (Flask-Mail / SendGrid / smtplib)
     logger.info("Sending shopping list to %s", email)
     return jsonify({"success": True})
+
+@app.route("/download_shopping_list_pdf")
+def download_shopping_list_pdf():
+    """Generate and download shopping list as PDF"""
+    selected_slugs = [r.slug for r in get_all_recipes() if r.selected]
+
+    if not selected_slugs:
+        return "No recipes selected", 400
+
+    lists, metas = _get_shopping_list_data()
+    main, secondary = get_merged_shopping_list(selected_slugs, lists)
+    names = [metas[slug].name for slug in selected_slugs]
+    md = generate_shopping_list_md(names, selected_slugs, main, secondary, show_sources=False)
+
+    # Convert markdown to HTML
+    html_content = markdown.markdown(md, extensions=[
+        "tables",
+        "fenced_code",
+        "nl2br",
+        "sane_lists"
+    ])
+
+    # Wrap in proper HTML document with styling
+    full_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            @page {{
+                size: letter;
+                margin: 0.75in;
+            }}
+            body {{
+                font-family: Arial, sans-serif;
+                font-size: 11pt;
+                line-height: 1.5;
+                color: #000;
+            }}
+            h1 {{
+                font-size: 20pt;
+                font-weight: bold;
+                color: #000;
+                margin-top: 0;
+                margin-bottom: 0.5em;
+                padding-bottom: 0.3em;
+                border-bottom: 2px solid #333;
+            }}
+            h2 {{
+                font-size: 16pt;
+                font-weight: bold;
+                color: #000;
+                margin-top: 1em;
+                margin-bottom: 0.4em;
+                padding-bottom: 0.2em;
+                border-bottom: 1px solid #666;
+                page-break-after: avoid;
+            }}
+            h3 {{
+                font-size: 13pt;
+                font-weight: bold;
+                color: #000;
+                margin-top: 0.8em;
+                margin-bottom: 0.3em;
+                padding-left: 0.3em;
+                border-left: 3px solid #333;
+                page-break-after: avoid;
+            }}
+            p {{
+                margin-bottom: 0.5em;
+            }}
+            ul, ol {{
+                margin-bottom: 0.5em;
+                padding-left: 1.5em;
+            }}
+            li {{
+                margin-bottom: 0.2em;
+                page-break-inside: avoid;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 1em;
+                page-break-inside: avoid;
+            }}
+            th, td {{
+                padding: 6px 10px;
+                border: 1px solid #999;
+                text-align: left;
+            }}
+            th {{
+                background-color: #f0f0f0;
+                font-weight: bold;
+            }}
+            tr {{
+                page-break-inside: avoid;
+            }}
+            strong {{
+                font-weight: bold;
+            }}
+            em {{
+                font-style: italic;
+            }}
+            code {{
+                background-color: #f0f0f0;
+                padding: 2px 4px;
+                border-radius: 2px;
+                font-family: monospace;
+                font-size: 0.9em;
+            }}
+            pre {{
+                background-color: #f0f0f0;
+                padding: 0.5em;
+                border-radius: 3px;
+                margin-bottom: 0.5em;
+                overflow-x: auto;
+            }}
+            pre code {{
+                background-color: transparent;
+                padding: 0;
+            }}
+            blockquote {{
+                border-left: 3px solid #999;
+                padding-left: 0.75em;
+                margin: 0.5em 0;
+                color: #333;
+                font-style: italic;
+            }}
+            hr {{
+                border: none;
+                border-top: 1px solid #999;
+                margin: 1em 0;
+            }}
+        </style>
+    </head>
+    <body>
+        {html_content}
+    </body>
+    </html>
+    """
+
+    # Generate PDF
+    pdf_io = BytesIO()
+    HTML(string=full_html).write_pdf(pdf_io)
+    pdf_io.seek(0)
+
+    # Generate filename with today's date
+    today = date.today().isoformat()
+    filename = f"shopping-list-{today}.pdf"
+
+    return send_file(
+        pdf_io,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=filename
+    )
 
 # ---------------------------------------------------------------------------
 # Routes — recipe list
