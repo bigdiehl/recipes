@@ -125,7 +125,8 @@ At some point, we should refine how we randomly select. I mainly want to get 2-3
 - Make weekly email schedule font more similar to the rest on mobile
 - Make next schedule sent date use month and day of week names
 - send now (test) should work even if no schedule is saved. 
-- on recipes page, first selected recipe should automatically be selected for display. Otherwise just the first one in list. Or should remember the last one that was selected (in a cookie?)
+- on recipes page remember the last one that was selected (in a cookie?)
+- When automated email is sent, should deselect all recipes. 
 
 ## Running
 
