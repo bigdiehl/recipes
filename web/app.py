@@ -165,7 +165,12 @@ def get_shopping_list_html(show_sources: bool = False) -> str:
     with open(osp.join(OUTPUT_DIR, "shopping_list.md"), "w") as f:
         f.write(md)
 
-    return markdown.markdown(md, extensions=["tables"])
+    return markdown.markdown(md, extensions=[
+        "tables",
+        "fenced_code",
+        "nl2br",
+        "sane_lists"
+    ])
 
 # ---------------------------------------------------------------------------
 # Routes — home
@@ -244,7 +249,12 @@ def get_markdown_recipe(recipe_name):
     with open(md_file, "r", encoding="utf-8") as f:
         md_content = f.read()
 
-    html_content = markdown.markdown(md_content)
+    html_content = markdown.markdown(md_content, extensions=[
+        "tables",
+        "fenced_code",
+        "nl2br",
+        "sane_lists"
+    ])
     html_content = re.sub(
         r'src="([^":]+)"',
         lambda m: f'src="recipes/{recipe.slug}/{m.group(1)}"',
