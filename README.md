@@ -122,6 +122,10 @@ TODO
 
 At some point, we should refine how we randomly select. I mainly want to get 2-3 entrees for the week, and maybe 2 sides. Should be able to specify how many of each category. Or just keep it random?
 
+- Make weekly email schedule font more similar to the rest on mobile
+- Make next schedule sent date use month and day of week names
+- send now (test) should work even if no schedule is saved. 
+- on recipes page, first selected recipe should automatically be selected for display. Otherwise just the first one in list. Or should remember the last one that was selected (in a cookie?)
 
 ## Running
 

@@ -1,0 +1,15 @@
+
+[Unit]
+Description=Web UI for Diehl Recipes
+After=network.target
+
+[Service]
+Type=simple
+User=sdiehl 
+WorkingDirectory=<dir to recipes_app>
+EnvironmentFile=/etc/recipes_app.env
+ExecStart=<dir to recipes_app>/.venv/bin/python3 web/app.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

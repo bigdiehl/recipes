@@ -20,13 +20,13 @@ Servings: 4
 
 ## Directions
 
-#### Spicy Pico De Gallo
+### Spicy Pico De Gallo
 Chop onions, tomatoes, and jalepeno. Combine into bowl. Add lime juice and salt and pepper
 
-#### Crema
+### Crema
 In a separate bowl, combine sour cream, 1/2 tsp southwest spice, salt and pepper, and a bit of lime juice. Add water until drizzly
 
-#### Tostadas
+### Tostadas
 1. Preheat oven to **`450 degrees`**.
 
 2. Melt 2 Tbsp of butter in a pan. Saute onions. Stir in garlic and southwest spice. 
