@@ -4,29 +4,129 @@
 
 {% block content %}
 
-<div class="container-fluid ms-0 px-0 mt-4 mb-4" id="recipeList">
-    <h2>Recipes</h2>
-    <div class="list-group overflow-auto mt-3 py-2 px-2 border" style="max-height: 250px;">
-        {% for recipe in recipes %}
-        <div class="recipe-item d-flex align-items-center justify-content-between" data-recipename="{{ recipe.name }}">
-            <span>{{ recipe.name }}</span>
-            <button 
-                type="button" 
-                class="btn {{ 'btn-primary' if recipe.selected else 'btn-success' }} btn-sm add-recipe" 
-                data-id="{{ recipe.slug }}"
-                data-selected="{{ recipe.selected }}"
-                data-bs-toggle="tooltip" 
-                data-bs-placement="top" 
-                title="Add this recipe">
-                    {{ '✔' if recipe.selected else '+' }}
-            </button>
-        </div>
-        {% endfor %}
-    </div>
-</div>
+<div class="recipes-page-container mt-4 mb-4">
+    <!-- Left Column: Recipe List -->
+    <div class="recipes-list-column">
+        <h2>Recipes</h2>
 
-<div class="markdown-content" id="markdownContent">
-    <em>Select a recipe above to view its contents.</em>
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mt-3" id="recipeTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="saved-tab" data-bs-toggle="tab" data-bs-target="#saved" type="button" role="tab">
+                    Saved
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab">
+                    Pending
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content border border-top-0 p-2" id="recipeTabContent" style="max-height: 70vh; overflow-y: auto;">
+
+        <!-- Saved Recipes Tab -->
+        <div class="tab-pane fade show active" id="saved" role="tabpanel">
+            <!-- Grouping Toggle -->
+            <div class="mb-2">
+                <div class="btn-group btn-group-sm w-100" role="group">
+                    <input type="radio" class="btn-check" name="groupBy" id="groupByCategory" value="category" checked>
+                    <label class="btn btn-outline-primary" for="groupByCategory">Category</label>
+
+                    <input type="radio" class="btn-check" name="groupBy" id="groupByMeal" value="meal">
+                    <label class="btn btn-outline-primary" for="groupByMeal">Meal</label>
+                </div>
+            </div>
+
+            <!-- Recipes grouped by Category (default) -->
+            <div id="categoryGroups">
+                {% set groups = {} %}
+                {% for recipe in recipes %}
+                    {% set group = recipe.category or 'Other' %}
+                    {% if group not in groups %}
+                        {% set _ = groups.update({group: []}) %}
+                    {% endif %}
+                    {% set _ = groups[group].append(recipe) %}
+                {% endfor %}
+
+                {% for group_name in ['ENTREE', 'SALAD', 'SIDE', 'DESSERT', 'Other'] %}
+                    {% if group_name in groups %}
+                        <div class="recipe-group mb-3">
+                            <h5 class="text-muted">{{ group_name.title() }}</h5>
+                            <div class="list-group">
+                                {% for recipe in groups[group_name] %}
+                                <div class="recipe-item d-flex align-items-center justify-content-between" data-recipename="{{ recipe.name }}" data-category="{{ recipe.category }}" data-meal="{{ recipe.meal }}">
+                                    <span>{{ recipe.name }}</span>
+                                    <button
+                                        type="button"
+                                        class="btn {{ 'btn-primary' if recipe.selected else 'btn-success' }} btn-sm add-recipe"
+                                        data-id="{{ recipe.slug }}"
+                                        data-selected="{{ recipe.selected }}"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top"
+                                        title="Add this recipe">
+                                            {{ '✔' if recipe.selected else '+' }}
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- Recipes grouped by Meal (hidden by default) -->
+            <div id="mealGroups" style="display: none;">
+                {% set meal_groups = {} %}
+                {% for recipe in recipes %}
+                    {% set group = recipe.meal or 'Other' %}
+                    {% if group not in meal_groups %}
+                        {% set _ = meal_groups.update({group: []}) %}
+                    {% endif %}
+                    {% set _ = meal_groups[group].append(recipe) %}
+                {% endfor %}
+
+                {% for group_name in ['BREAKFAST', 'LUNCH', 'DINNER', 'Other'] %}
+                    {% if group_name in meal_groups %}
+                        <div class="recipe-group mb-3">
+                            <h5 class="text-muted">{{ group_name.title() }}</h5>
+                            <div class="list-group">
+                                {% for recipe in meal_groups[group_name] %}
+                                <div class="recipe-item d-flex align-items-center justify-content-between" data-recipename="{{ recipe.name }}" data-category="{{ recipe.category }}" data-meal="{{ recipe.meal }}">
+                                    <span>{{ recipe.name }}</span>
+                                    <button
+                                        type="button"
+                                        class="btn {{ 'btn-primary' if recipe.selected else 'btn-success' }} btn-sm add-recipe"
+                                        data-id="{{ recipe.slug }}"
+                                        data-selected="{{ recipe.selected }}"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top"
+                                        title="Add this recipe">
+                                            {{ '✔' if recipe.selected else '+' }}
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Pending Recipes Tab -->
+        <div class="tab-pane fade" id="pending" role="tabpanel">
+            <p class="text-muted"><em>Pending recipes will appear here once the import functionality is enabled.</em></p>
+        </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Recipe Content -->
+    <div class="recipes-content-column">
+        <div class="markdown-content" id="markdownContent">
+            <em>Select a recipe to view its contents.</em>
+        </div>
+    </div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>

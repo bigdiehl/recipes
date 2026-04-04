@@ -44,6 +44,8 @@ class Recipe:
     name:             str
     md_filename:      str
     path:             str
+    category:         str  = ""
+    meal:             str  = ""
     selected:         bool = False
     weeks_since_last: int  = 1
 
@@ -95,11 +97,26 @@ def get_all_recipes() -> list[Recipe]:
         path = Path(recipe_dir).relative_to(RECIPES_DIR)
         slug = osp.basename(recipe_dir)
         entry = state.get(slug, {})
+
+        # Load recipe metadata from recipe.yaml
+        category = ""
+        meal = ""
+        yaml_path = osp.join(recipe_dir, "recipe.yaml")
+        if osp.exists(yaml_path):
+            try:
+                recipe_data = RecipeData.from_yaml(yaml_path)
+                category = recipe_data.category.value
+                meal = recipe_data.meal.value
+            except Exception as e:
+                logger.warning(f"Failed to load recipe data for {slug}: {e}")
+
         recipes.append(Recipe(
             slug             = slug,
             path             = str(path),
             name             = slug.replace("_", " ").title(),
             md_filename      = _find_md_file(recipe_dir),
+            category         = category,
+            meal             = meal,
             selected         = entry.get("selected", False),
             weeks_since_last = entry.get("weeks_since_last", 1),
         ))
