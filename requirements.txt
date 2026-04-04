@@ -1,7 +1,0 @@
-Flask
-Flask-SQLAlchemy
-markdown
-pandas
-pyyaml
-pint
-termcolor
