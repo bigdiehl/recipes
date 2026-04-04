@@ -4,14 +4,17 @@ import os
 import os.path as osp
 from pathlib import Path
 import re
+import random
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timedelta
 from io import BytesIO
 
 import markdown
 import yaml
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory, send_file, session
 from weasyprint import HTML, CSS
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 from recipe_core.recipe_lib import RecipeData
 from recipe_core.shopping_list import (
@@ -139,6 +142,202 @@ def _update_state(slug: str, **kwargs):
     entry.update(kwargs)
     state[slug] = entry
     _save_state(state)
+
+# ---------------------------------------------------------------------------
+# Schedule configuration
+# ---------------------------------------------------------------------------
+
+def _get_schedule_config() -> dict:
+    """Get the schedule configuration from state file."""
+    state = _load_state()
+    return state.get("_schedule_config", {
+        "enabled": False,
+        "num_recipes": 3,
+        "day_of_week": 0,  # Monday
+        "send_time": "09:00",
+        "recipients": ""
+    })
+
+def _save_schedule_config(config: dict):
+    """Save schedule configuration to state file."""
+    state = _load_state()
+    state["_schedule_config"] = config
+    _save_state(state)
+
+def _is_recipe_available(slug: str, min_period_weeks: int) -> bool:
+    """
+    Check if a recipe is available for selection based on when it was last used.
+
+    Args:
+        slug: Recipe slug
+        min_period_weeks: Minimum weeks to wait before selecting again
+
+    Returns:
+        True if recipe can be selected
+    """
+    state = _load_state()
+    entry = state.get(slug, {})
+    last_used = entry.get("last_used_date")
+
+    if not last_used:
+        return True
+
+    last_used_date = datetime.fromisoformat(last_used).date()
+    weeks_since = (date.today() - last_used_date).days / 7
+
+    return weeks_since >= min_period_weeks
+
+def select_recipes_for_schedule(num_recipes: int) -> list[str]:
+    """
+    Select recipes for scheduled email, using currently selected recipes first,
+    then filling with random available recipes.
+
+    Args:
+        num_recipes: Total number of recipes to select
+
+    Returns:
+        List of recipe slugs
+    """
+    all_recipes = get_all_recipes()
+
+    # Get currently selected recipes
+    selected_slugs = [r.slug for r in all_recipes if r.selected]
+
+    # If we already have enough, just use those
+    if len(selected_slugs) >= num_recipes:
+        return selected_slugs[:num_recipes]
+
+    # Load recipe metadata to get min_period_weeks
+    _, metas = _get_shopping_list_data()
+
+    # Get available recipes (not currently selected and past min period)
+    available = []
+    for recipe in all_recipes:
+        if recipe.slug not in selected_slugs:
+            recipe_data = metas.get(recipe.slug)
+            if recipe_data and recipe_data.enabled:
+                min_period = recipe_data.min_period_weeks
+                if _is_recipe_available(recipe.slug, min_period):
+                    available.append(recipe.slug)
+
+    # Randomly select from available recipes
+    num_needed = num_recipes - len(selected_slugs)
+    if available and num_needed > 0:
+        random.shuffle(available)
+        selected_slugs.extend(available[:num_needed])
+
+    return selected_slugs
+
+def update_recipe_usage(slugs: list[str]):
+    """Mark recipes as used today."""
+    today = date.today().isoformat()
+    for slug in slugs:
+        _update_state(slug, last_used_date=today)
+
+def send_scheduled_shopping_list():
+    """
+    Scheduled task to send weekly shopping list email.
+    Selects recipes, generates PDF, and sends via email.
+    """
+    try:
+        config = _get_schedule_config()
+
+        if not config.get("enabled"):
+            logger.info("Scheduled email disabled, skipping")
+            return
+
+        recipients_str = config.get("recipients", "").strip()
+        if not recipients_str:
+            logger.warning("No recipients configured for scheduled email")
+            return
+
+        recipients = [e.strip() for e in recipients_str.replace(";", ",").split(",") if e.strip()]
+        num_recipes = config.get("num_recipes", 3)
+
+        # Select recipes
+        selected_slugs = select_recipes_for_schedule(num_recipes)
+
+        if not selected_slugs:
+            logger.warning("No recipes available for scheduled email")
+            return
+
+        # Update recipe usage tracking
+        update_recipe_usage(selected_slugs)
+
+        # Generate PDF
+        lists, metas = _get_shopping_list_data()
+        main, secondary = get_merged_shopping_list(selected_slugs, lists)
+        names = [metas[slug].name for slug in selected_slugs]
+        md = generate_shopping_list_md(names, selected_slugs, main, secondary, show_sources=False)
+
+        html_content = markdown.markdown(md, extensions=["tables", "fenced_code", "nl2br", "sane_lists"])
+
+        full_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                @page {{ size: letter; margin: 0.75in; }}
+                body {{ font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #000; }}
+                h1 {{ font-size: 20pt; font-weight: bold; color: #000; margin-top: 0; margin-bottom: 0.5em; padding-bottom: 0.3em; border-bottom: 2px solid #333; }}
+                h2 {{ font-size: 16pt; font-weight: bold; color: #000; margin-top: 1em; margin-bottom: 0.4em; padding-bottom: 0.2em; border-bottom: 1px solid #666; page-break-after: avoid; }}
+                table {{ width: 100%; border-collapse: collapse; margin-bottom: 1em; page-break-inside: avoid; }}
+                th, td {{ padding: 6px 10px; border: 1px solid #999; text-align: left; }}
+                th {{ background-color: #f0f0f0; font-weight: bold; }}
+            </style>
+        </head>
+        <body>
+            {html_content}
+        </body>
+        </html>
+        """
+
+        pdf_bytes = HTML(string=full_html).write_pdf()
+
+        # Send email
+        sender = os.environ.get("GMAIL_SENDER")
+        password = os.environ.get("GMAIL_APP_PASSWORD")
+
+        if not sender or not password:
+            logger.error("Email credentials not configured")
+            return
+
+        today = date.today().isoformat()
+        filename = f"shopping-list-{today}.pdf"
+        temp_pdf_path = osp.join(OUTPUT_DIR, filename)
+
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        with open(temp_pdf_path, "wb") as f:
+            f.write(pdf_bytes)
+
+        subject = f"Weekly Shopping List - {today}"
+        body = f"Your weekly shopping list for {len(selected_slugs)} recipes.\n\nRecipes:\n" + "\n".join(f"- {metas[slug].name}" for slug in selected_slugs)
+
+        message = build_message(
+            sender=sender,
+            recipients=recipients,
+            subject=subject,
+            body=body,
+            attachments=[temp_pdf_path]
+        )
+
+        send_email(
+            sender=sender,
+            password=password,
+            recipients=recipients,
+            message=message,
+            server=SMTP_SERVER,
+            port=SMTP_PORT
+        )
+
+        if osp.exists(temp_pdf_path):
+            os.remove(temp_pdf_path)
+
+        logger.info("Scheduled shopping list sent to: %s", ", ".join(recipients))
+
+    except Exception as e:
+        logger.error("Failed to send scheduled shopping list: %s", e, exc_info=True)
 
 # ---------------------------------------------------------------------------
 # Shopping list helpers
@@ -681,10 +880,123 @@ def discard(slug):
     return jsonify({"success": True})
 
 # ---------------------------------------------------------------------------
+# Routes — schedule management
+# ---------------------------------------------------------------------------
+
+@app.route("/schedule/config", methods=["GET"])
+def get_schedule():
+    """Get current schedule configuration."""
+    config = _get_schedule_config()
+
+    # Calculate next send date/time if enabled
+    next_send = None
+    if config.get("enabled"):
+        day_of_week = config.get("day_of_week", 0)
+        send_time = config.get("send_time", "09:00")
+
+        today = date.today()
+        days_until = (day_of_week - today.weekday()) % 7
+        if days_until == 0:
+            # Check if time has passed today
+            hour, minute = map(int, send_time.split(":"))
+            now = datetime.now()
+            send_datetime = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            if now >= send_datetime:
+                days_until = 7
+
+        next_date = today + timedelta(days=days_until if days_until > 0 else 7)
+        next_send = f"{next_date.isoformat()} {send_time}"
+
+    return jsonify({
+        "success": True,
+        "config": config,
+        "next_send": next_send
+    })
+
+@app.route("/schedule/config", methods=["POST"])
+def save_schedule():
+    """Save schedule configuration."""
+    try:
+        data = request.get_json()
+        config = {
+            "enabled": data.get("enabled", False),
+            "num_recipes": int(data.get("num_recipes", 3)),
+            "day_of_week": int(data.get("day_of_week", 0)),
+            "send_time": data.get("send_time", "09:00"),
+            "recipients": data.get("recipients", "")
+        }
+
+        _save_schedule_config(config)
+
+        # Reschedule the job
+        _reschedule_email_job()
+
+        return jsonify({"success": True, "message": "Schedule saved"})
+    except Exception as e:
+        logger.error("Failed to save schedule: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/schedule/send_now", methods=["POST"])
+def send_now():
+    """Manually trigger scheduled email."""
+    try:
+        send_scheduled_shopping_list()
+        return jsonify({"success": True, "message": "Email sent successfully"})
+    except Exception as e:
+        logger.error("Failed to send email: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ---------------------------------------------------------------------------
+# Scheduler setup
+# ---------------------------------------------------------------------------
+
+scheduler = BackgroundScheduler()
+scheduler.start()
+
+def _reschedule_email_job():
+    """Remove existing job and reschedule based on current config."""
+    # Remove existing job if it exists
+    if scheduler.get_job("weekly_shopping_list"):
+        scheduler.remove_job("weekly_shopping_list")
+
+    config = _get_schedule_config()
+    if not config.get("enabled"):
+        logger.info("Scheduled emails disabled")
+        return
+
+    day_of_week = config.get("day_of_week", 0)
+    send_time = config.get("send_time", "09:00")
+    hour, minute = map(int, send_time.split(":"))
+
+    # Schedule job using cron trigger
+    trigger = CronTrigger(
+        day_of_week=day_of_week,
+        hour=hour,
+        minute=minute
+    )
+
+    scheduler.add_job(
+        func=send_scheduled_shopping_list,
+        trigger=trigger,
+        id="weekly_shopping_list",
+        name="Weekly Shopping List Email",
+        replace_existing=True
+    )
+
+    logger.info("Scheduled weekly email for day=%d at %s", day_of_week, send_time)
+
+# ---------------------------------------------------------------------------
 # Startup
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     os.makedirs(PENDING_DIR, exist_ok=True)
-    app.run(host="0.0.0.0", port=5000, debug=True)
+
+    # Initialize scheduler with current config
+    _reschedule_email_job()
+
+    try:
+        app.run(host="0.0.0.0", port=5000, debug=True)
+    finally:
+        scheduler.shutdown()

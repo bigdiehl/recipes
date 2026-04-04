@@ -56,12 +56,163 @@
     </button>
 </div>
 
+<!-- Weekly Email Schedule Configuration -->
+<div class="shopping-list-content mt-5 mb-5">
+    <div class="card">
+        <div class="card-header">
+            <h4 class="mb-0">Weekly Email Schedule</h4>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="scheduleEnabled">
+                        <label class="form-check-label" for="scheduleEnabled">
+                            <strong>Enable Automatic Weekly Emails</strong>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="numRecipes" class="form-label">Number of Recipes</label>
+                    <input type="number" class="form-control" id="numRecipes" min="1" max="20" value="3">
+                </div>
+                <div class="col-md-4">
+                    <label for="dayOfWeek" class="form-label">Day of Week</label>
+                    <select class="form-select" id="dayOfWeek">
+                        <option value="0">Monday</option>
+                        <option value="1">Tuesday</option>
+                        <option value="2">Wednesday</option>
+                        <option value="3">Thursday</option>
+                        <option value="4">Friday</option>
+                        <option value="5">Saturday</option>
+                        <option value="6">Sunday</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="sendTime" class="form-label">Send Time</label>
+                    <input type="time" class="form-control" id="sendTime" value="09:00">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label for="scheduleRecipients" class="form-label">Email Recipients (comma or semicolon separated)</label>
+                    <input type="text" class="form-control" id="scheduleRecipients" placeholder="email1@example.com, email2@example.com">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <button id="saveScheduleBtn" class="btn btn-primary me-2">Save Schedule</button>
+                    <button id="sendNowBtn" class="btn btn-secondary">Send Now (Test)</button>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div id="scheduleStatus" class="alert" style="display: none;"></div>
+                    <div id="nextSendInfo" class="text-muted" style="display: none;">
+                        <strong>Next scheduled send:</strong> <span id="nextSendDate"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="{{ url_for('static', filename='scripts/shopping_list.js') }}"></script>
 <script>
     document.getElementById('printListBtn').addEventListener('click', function() {
         window.location.href = '/download_shopping_list_pdf';
     });
+
+    // Load schedule configuration on page load
+    function loadScheduleConfig() {
+        $.get('/schedule/config', function(response) {
+            if (response.success) {
+                const config = response.config;
+                $('#scheduleEnabled').prop('checked', config.enabled);
+                $('#numRecipes').val(config.num_recipes);
+                $('#dayOfWeek').val(config.day_of_week);
+                $('#sendTime').val(config.send_time);
+                $('#scheduleRecipients').val(config.recipients);
+
+                if (response.next_send) {
+                    $('#nextSendDate').text(response.next_send);
+                    $('#nextSendInfo').show();
+                } else {
+                    $('#nextSendInfo').hide();
+                }
+            }
+        });
+    }
+
+    // Save schedule configuration
+    $('#saveScheduleBtn').click(function() {
+        const config = {
+            enabled: $('#scheduleEnabled').is(':checked'),
+            num_recipes: parseInt($('#numRecipes').val()),
+            day_of_week: parseInt($('#dayOfWeek').val()),
+            send_time: $('#sendTime').val(),
+            recipients: $('#scheduleRecipients').val()
+        };
+
+        $.ajax({
+            url: '/schedule/config',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(config),
+            success: function(response) {
+                $('#scheduleStatus')
+                    .removeClass('alert-danger')
+                    .addClass('alert-success')
+                    .text(response.message)
+                    .show();
+                loadScheduleConfig();
+                setTimeout(() => $('#scheduleStatus').fadeOut(), 3000);
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON?.error || 'Failed to save schedule';
+                $('#scheduleStatus')
+                    .removeClass('alert-success')
+                    .addClass('alert-danger')
+                    .text(error)
+                    .show();
+            }
+        });
+    });
+
+    // Send now (test)
+    $('#sendNowBtn').click(function() {
+        const btn = $(this);
+        const originalText = btn.text();
+        btn.prop('disabled', true).text('Sending...');
+
+        $.post('/schedule/send_now', function(response) {
+            $('#scheduleStatus')
+                .removeClass('alert-danger')
+                .addClass('alert-success')
+                .text(response.message)
+                .show();
+            setTimeout(() => $('#scheduleStatus').fadeOut(), 3000);
+        }).fail(function(xhr) {
+            const error = xhr.responseJSON?.error || 'Failed to send email';
+            $('#scheduleStatus')
+                .removeClass('alert-success')
+                .addClass('alert-danger')
+                .text(error)
+                .show();
+        }).always(function() {
+            btn.prop('disabled', false).text(originalText);
+        });
+    });
+
+    // Load config on page load
+    loadScheduleConfig();
 </script>
 
 {% endblock %}
