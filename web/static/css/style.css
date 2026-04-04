@@ -1,3 +1,18 @@
+/* Global font settings */
+body {
+    font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 400;
+    color: #333;
+}
+
+/* Color variables for consistency */
+:root {
+    --primary-blue: #1e88e5;
+    --primary-blue-dark: #1565c0;
+    --text-dark: #2c3e50;
+    --text-medium: #5a6c7d;
+}
+
 /* Site title styling */
 .site-title {
     font-family: 'Playfair Display', serif;
@@ -5,31 +20,44 @@
     font-size: 2.5rem;
     color: #2c3e50;
     letter-spacing: 0.5px;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
     margin: 0;
+}
+
+/* All headings use Playfair Display */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+    color: #2c3e50;
+}
+
+/* Navigation and buttons use Lato */
+.btn, .nav-link, button {
+    font-family: 'Lato', sans-serif;
+    font-weight: 600;
 }
 
 /* Recipe items */
 .recipe-item {
     padding: 6px 10px;
     cursor: pointer;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
     margin-bottom: 4px;
-    background-color: #f9f9f9;
-    transition: background-color 0.2s;
+    background-color: #fafafa;
+    transition: all 0.2s ease;
     min-height: 38px;
     font-size: 0.9rem;
+    font-family: 'Lato', sans-serif;
 }
 
 .recipe-item:hover {
-    background-color: #eee;
+    background-color: #f0f0f0;
+    border-color: #bbb;
 }
 
 .recipe-item.active {
-    background-color: #d0e7ff;
-    font-weight: bold;
-    border-color: #007bff;
+    background-color: #e3f2fd;
+    font-weight: 600;
+    border-color: var(--primary-blue);
 }
 
 .recipe-item span {
@@ -50,12 +78,13 @@
 .markdown-content {
     padding: 20px;
     background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
     min-height: 200px;
     height: fit-content;
     line-height: 1.6;
     color: #333;
+    font-family: 'Lato', sans-serif;
 }
 
 /* Shopping list centered layout */
@@ -67,13 +96,14 @@
 
 /* Markdown headings - distinct hierarchy */
 .markdown-content h1 {
+    font-family: 'Playfair Display', serif;
     font-size: 2rem;
     font-weight: 700;
-    color: #1a1a1a;
+    color: var(--text-dark);
     margin-top: 1.5rem;
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
-    border-bottom: 3px solid #007bff;
+    border-bottom: 3px solid var(--primary-blue);
     width: fit-content;
     display: block;
 }
@@ -83,52 +113,57 @@
 }
 
 .markdown-content h2 {
+    font-family: 'Playfair Display', serif;
     font-size: 1.5rem;
     font-weight: 600;
-    color: #2c2c2c;
+    color: var(--text-dark);
     margin-top: 1.5rem;
     margin-bottom: 0.75rem;
     padding-bottom: 0.3rem;
-    border-bottom: 2px solid #6c757d;
+    border-bottom: 2px solid var(--text-medium);
     width: fit-content;
     display: block;
 }
 
 .markdown-content h3 {
+    font-family: 'Playfair Display', serif;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #3c3c3c;
+    color: var(--text-dark);
     margin-top: 1.25rem;
     margin-bottom: 0.5rem;
     padding-left: 0.5rem;
-    border-left: 4px solid #007bff;
+    border-left: 4px solid var(--primary-blue);
 }
 
 .markdown-content h4 {
+    font-family: 'Playfair Display', serif;
     font-size: 1.1rem;
     font-weight: 600;
-    color: #4c4c4c;
+    color: #34495e;
     margin-top: 1rem;
     margin-bottom: 0.5rem;
 }
 
 .markdown-content h5 {
+    font-family: 'Playfair Display', serif;
     font-size: 1rem;
     font-weight: 600;
-    color: #5c5c5c;
+    color: #34495e;
     margin-top: 0.75rem;
     margin-bottom: 0.5rem;
     font-style: italic;
 }
 
 .markdown-content h6 {
+    font-family: 'Lato', sans-serif;
     font-size: 0.95rem;
-    font-weight: 600;
-    color: #6c6c6c;
+    font-weight: 700;
+    color: #5a6c7d;
     margin-top: 0.75rem;
     margin-bottom: 0.5rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
 }
 
 /* Markdown paragraphs */
@@ -169,9 +204,9 @@
     background-color: #f4f4f4;
     padding: 0.2rem 0.4rem;
     border-radius: 3px;
-    font-family: 'Courier New', monospace;
+    font-family: 'Courier New', 'Consolas', monospace;
     font-size: 0.9em;
-    color: #c7254e;
+    color: #2c3e50;
 }
 
 .markdown-content pre {
@@ -190,12 +225,14 @@
 
 /* Markdown links */
 .markdown-content a {
-    color: #007bff;
+    color: var(--primary-blue);
     text-decoration: none;
+    border-bottom: 2px solid var(--primary-blue);
 }
 
 .markdown-content a:hover {
-    text-decoration: underline;
+    color: var(--primary-blue-dark);
+    border-bottom-color: var(--primary-blue-dark);
 }
 
 /* Markdown images */
@@ -211,14 +248,40 @@
 /* Markdown horizontal rules */
 .markdown-content hr {
     border: none;
-    border-top: 2px solid #e0e0e0;
+    border-top: 2px solid #dee2e6;
     margin: 2rem 0;
+}
+
+/* Tab styling */
+.nav-tabs .nav-link {
+    font-family: 'Lato', sans-serif;
+    font-weight: 600;
+    color: #5a6c7d;
+    border-radius: 6px 6px 0 0;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-blue);
+    font-weight: 700;
+    border-bottom: 2px solid var(--primary-blue);
+}
+
+/* Input fields */
+input.form-control {
+    font-family: 'Lato', sans-serif;
+    border-color: #ddd;
+    border-radius: 6px;
+}
+
+input.form-control:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.15);
 }
 
 /* Markdown strong/bold */
 .markdown-content strong {
-    font-weight: 600;
-    color: #1a1a1a;
+    font-weight: 700;
+    color: #2c3e50;
 }
 
 /* Markdown emphasis/italic */
@@ -421,11 +484,14 @@
 
 /* Recipe groups */
 .recipe-group h5 {
+    font-family: 'Playfair Display', serif;
     margin-bottom: 8px;
     margin-top: 8px;
     padding-bottom: 3px;
     border-bottom: 2px solid #dee2e6;
     font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
 }
 
 .recipe-group:first-child h5 {
@@ -481,6 +547,52 @@
 .nav-btn {
     white-space: nowrap;
     flex-shrink: 0;
+    font-family: 'Lato', sans-serif;
+    font-weight: 600;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+/* Button styling consistency */
+.btn-primary {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-blue-dark);
+    border-color: var(--primary-blue-dark);
+}
+
+.btn-outline-primary {
+    color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: #fff;
+}
+
+.btn-success {
+    background-color: #27ae60;
+    border-color: #27ae60;
+}
+
+.btn-success:hover {
+    background-color: #229954;
+    border-color: #229954;
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+    border-color: #e74c3c;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+    border-color: #c0392b;
 }
 
 /* Tables */
@@ -489,20 +601,23 @@ table {
     width: 100%;
     display: block;
     overflow-x: auto;
+    font-family: 'Lato', sans-serif;
 }
 
 th, td {
     padding: 8px 12px;
     text-align: left;
+    border: 1px solid #ddd;
 }
 
 th {
-    background-color: #f2f2f2;
-    font-weight: bold;
+    background-color: #f8f9fa;
+    font-weight: 700;
+    color: #2c3e50;
 }
 
 tr:nth-child(even) {
-    background-color: #f9f9f9;
+    background-color: #fafafa;
 }
 
 /* Mobile optimizations */
