@@ -20,6 +20,7 @@ from recipe_core.shopping_list import (
     get_merged_shopping_list,
     get_shopping_list_data
 )
+from recipe_core.mailer import build_message, send_email
 # from recipe_importer import ImportResult, discard_pending, extract_recipe, promote_recipe, save_pending
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,11 @@ RECIPES_DIR = os.path.join(_this_dir, config["app"]["recipes_dir"])
 PENDING_DIR = os.path.join(_this_dir, config["app"]["pending_dir"])
 STATE_FILE  = os.path.join(_this_dir, config["app"]["state_file"])
 OUTPUT_DIR  = os.path.join(_this_dir, config["app"]["output_dir"])
+
+# Email configuration
+EMAIL_CONFIG = config.get("email", {})
+SMTP_SERVER = EMAIL_CONFIG.get("smtp_server", "smtp.gmail.com")
+SMTP_PORT = EMAIL_CONFIG.get("smtp_port", 587)
 
 # ---------------------------------------------------------------------------
 # Recipe dataclass
@@ -203,11 +209,172 @@ def update_shopping_list_html():
 
 @app.route("/send_list", methods=["POST"])
 def send_list():
+    """Send shopping list PDF via email"""
     data = request.get_json()
-    email = data.get("email")
-    # TODO: wire up email sending (Flask-Mail / SendGrid / smtplib)
-    logger.info("Sending shopping list to %s", email)
-    return jsonify({"success": True})
+    email_input = data.get("email", "").strip()
+
+    if not email_input:
+        return jsonify({"success": False, "error": "No email addresses provided"}), 400
+
+    # Parse email addresses (split by semicolon or comma)
+    recipients = [e.strip() for e in email_input.replace(";", ",").split(",") if e.strip()]
+
+    if not recipients:
+        return jsonify({"success": False, "error": "No valid email addresses"}), 400
+
+    # Get sender email and password from environment
+    sender = os.environ.get("GMAIL_SENDER")
+    password = os.environ.get("GMAIL_APP_PASSWORD")
+
+    if not sender:
+        return jsonify({"success": False, "error": "GMAIL_SENDER environment variable not set"}), 500
+
+    if not password:
+        return jsonify({"success": False, "error": "GMAIL_APP_PASSWORD environment variable not set"}), 500
+
+    # Generate PDF
+    selected_slugs = [r.slug for r in get_all_recipes() if r.selected]
+
+    if not selected_slugs:
+        return jsonify({"success": False, "error": "No recipes selected"}), 400
+
+    try:
+        lists, metas = _get_shopping_list_data()
+        main, secondary = get_merged_shopping_list(selected_slugs, lists)
+        names = [metas[slug].name for slug in selected_slugs]
+        md = generate_shopping_list_md(names, selected_slugs, main, secondary, show_sources=False)
+
+        # Convert markdown to HTML
+        html_content = markdown.markdown(md, extensions=[
+            "tables",
+            "fenced_code",
+            "nl2br",
+            "sane_lists"
+        ])
+
+        # Wrap in proper HTML document with styling
+        full_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                @page {{
+                    size: letter;
+                    margin: 0.75in;
+                }}
+                body {{
+                    font-family: Arial, sans-serif;
+                    font-size: 11pt;
+                    line-height: 1.5;
+                    color: #000;
+                }}
+                h1 {{
+                    font-size: 20pt;
+                    font-weight: bold;
+                    color: #000;
+                    margin-top: 0;
+                    margin-bottom: 0.5em;
+                    padding-bottom: 0.3em;
+                    border-bottom: 2px solid #333;
+                }}
+                h2 {{
+                    font-size: 16pt;
+                    font-weight: bold;
+                    color: #000;
+                    margin-top: 1em;
+                    margin-bottom: 0.4em;
+                    padding-bottom: 0.2em;
+                    border-bottom: 1px solid #666;
+                    page-break-after: avoid;
+                }}
+                h3 {{
+                    font-size: 13pt;
+                    font-weight: bold;
+                    color: #000;
+                    margin-top: 0.8em;
+                    margin-bottom: 0.3em;
+                    padding-left: 0.3em;
+                    border-left: 3px solid #333;
+                    page-break-after: avoid;
+                }}
+                ul, ol {{
+                    margin-bottom: 0.5em;
+                    padding-left: 1.5em;
+                }}
+                li {{
+                    margin-bottom: 0.2em;
+                    page-break-inside: avoid;
+                }}
+                table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 1em;
+                    page-break-inside: avoid;
+                }}
+                th, td {{
+                    padding: 6px 10px;
+                    border: 1px solid #999;
+                    text-align: left;
+                }}
+                th {{
+                    background-color: #f0f0f0;
+                    font-weight: bold;
+                }}
+                tr {{
+                    page-break-inside: avoid;
+                }}
+            </style>
+        </head>
+        <body>
+            {html_content}
+        </body>
+        </html>
+        """
+
+        # Generate PDF in memory
+        pdf_bytes = HTML(string=full_html).write_pdf()
+
+        # Save PDF temporarily
+        today = date.today().isoformat()
+        filename = f"shopping-list-{today}.pdf"
+        temp_pdf_path = osp.join(OUTPUT_DIR, filename)
+
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        with open(temp_pdf_path, "wb") as f:
+            f.write(pdf_bytes)
+
+        # Build and send email
+        subject = f"Shopping List - {today}"
+        body = f"Please find attached your shopping list for {len(selected_slugs)} selected recipes."
+
+        message = build_message(
+            sender=sender,
+            recipients=recipients,
+            subject=subject,
+            body=body,
+            attachments=[temp_pdf_path]
+        )
+
+        send_email(
+            sender=sender,
+            password=password,
+            recipients=recipients,
+            message=message,
+            server=SMTP_SERVER,
+            port=SMTP_PORT
+        )
+
+        # Clean up temp file
+        if osp.exists(temp_pdf_path):
+            os.remove(temp_pdf_path)
+
+        logger.info("Shopping list sent to: %s", ", ".join(recipients))
+        return jsonify({"success": True, "message": f"Email sent to {len(recipients)} recipient(s)"})
+
+    except Exception as e:
+        logger.error("Failed to send email: %s", e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/download_shopping_list_pdf")
 def download_shopping_list_pdf():

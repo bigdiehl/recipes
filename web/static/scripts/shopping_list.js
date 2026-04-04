@@ -32,7 +32,18 @@ $(document).ready(function () {
 
     // Email shopping list
     $("#emailListBtn").on("click", function () {
-        const email = $("#emailAddress").val();
+        const button = $(this);
+        const email = $("#emailAddress").val().trim();
+
+        if (!email) {
+            alert("Please enter at least one email address.");
+            return;
+        }
+
+        // Disable button and show loading state
+        button.prop("disabled", true);
+        const originalText = button.text();
+        button.text("Sending...");
 
         $.ajax({
             url: "/send_list",
@@ -41,13 +52,22 @@ $(document).ready(function () {
             data: JSON.stringify({ email: email }),
             success: function (response) {
                 if (response.success) {
-                    alert("Shopping list sent to " + email);
+                    alert(response.message || "Shopping list sent successfully!");
                 } else {
-                    alert("Failed to send email.");
+                    alert("Failed to send email: " + (response.error || "Unknown error"));
                 }
             },
-            error: function () {
-                alert("Error sending request to server.");
+            error: function (xhr) {
+                let errorMsg = "Error sending email.";
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                }
+                alert(errorMsg);
+            },
+            complete: function () {
+                // Re-enable button
+                button.prop("disabled", false);
+                button.text(originalText);
             }
         });
     });

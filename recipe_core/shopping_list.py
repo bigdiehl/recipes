@@ -261,7 +261,7 @@ else:
         md = "# Shopping List\n\n"
         md += "Recipes:\n\n"
         for i, name in enumerate(names):
-            md += f"[{i+1}] {name}<br>\n"
+            md += f"[{i+1}] {name}\n"
         md += "\n"
         md += _section("Main List", main)
         md += "<br>\n"

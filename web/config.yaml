@@ -3,3 +3,10 @@ app:
   pending_dir: ../data/recipes/pending
   state_file: instance/state.json
   output_dir: ../output
+
+email:
+  # Set GMAIL_APP_PASSWORD environment variable with your Gmail app password
+  # See: https://support.google.com/accounts/answer/185833
+  sender: ""  # Your Gmail address - set via GMAIL_SENDER env var
+  smtp_server: smtp.gmail.com
+  smtp_port: 587
