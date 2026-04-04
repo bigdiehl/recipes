@@ -5,13 +5,14 @@ import os.path as osp
 from pathlib import Path
 import re
 import random
+import shutil
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from io import BytesIO
 
 import markdown
 import yaml
-from flask import Flask, abort, jsonify, render_template, request, send_from_directory, send_file, session
+from flask import Flask, abort, jsonify, render_template, request, send_from_directory, send_file, session, redirect
 from weasyprint import HTML, CSS
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -24,7 +25,7 @@ from recipe_core.shopping_list import (
     get_shopping_list_data
 )
 from recipe_core.mailer import build_message, send_email
-# from recipe_importer import ImportResult, discard_pending, extract_recipe, promote_recipe, save_pending
+from recipe_core.gemini_importer import extract_recipe, ImportResult
 
 logger = logging.getLogger(__name__)
 
@@ -760,6 +761,14 @@ def serve_recipe_file(file):
         abort(404)
     return send_from_directory(osp.join(RECIPES_DIR, recipe.path), file)
 
+@app.route("/pending/<slug>/<path:file>")
+def serve_pending_file(slug, file):
+    """Serve files from pending recipe directory."""
+    pending_recipe_dir = osp.join(PENDING_DIR, slug)
+    if not osp.exists(pending_recipe_dir):
+        abort(404)
+    return send_from_directory(pending_recipe_dir, file)
+
 @app.route("/markdown/recipe/<recipe_name>")
 def get_markdown_recipe(recipe_name):
     recipes = get_all_recipes()
@@ -788,12 +797,324 @@ def get_markdown_recipe(recipe_name):
     return jsonify({"filename": md_file, "content": html_content})
 
 # ---------------------------------------------------------------------------
-# Routes — AI recipe import
+# Recipe management helpers
 # ---------------------------------------------------------------------------
 
-@app.route("/import", methods=["GET"])
-def import_page():
-    return render_template("import.html", active_page="import")
+def save_pending(result: ImportResult, pending_dir: str = PENDING_DIR):
+    """Save an extracted recipe to the pending directory."""
+    recipe_dir = osp.join(pending_dir, result.slug)
+    os.makedirs(recipe_dir, exist_ok=True)
+
+    # Save YAML
+    yaml_path = osp.join(recipe_dir, "recipe.yaml")
+    with open(yaml_path, "w") as f:
+        yaml.dump(result.recipe_data.model_dump(mode="python", exclude_none=True), f, default_flow_style=False)
+
+    # Save Markdown
+    md_path = osp.join(recipe_dir, "recipe.md")
+    with open(md_path, "w") as f:
+        f.write(result.markdown)
+
+    # Save source info
+    info_path = osp.join(recipe_dir, "source.txt")
+    with open(info_path, "w") as f:
+        f.write(result.source)
+
+def promote_recipe(slug: str, pending_dir: str = PENDING_DIR, recipes_dir: str = RECIPES_DIR):
+    """Move a recipe from pending to saved/dinner directory."""
+    src = osp.join(pending_dir, slug)
+    dst = osp.join(recipes_dir, "saved", "dinner", slug)
+
+    if not osp.exists(src):
+        raise FileNotFoundError(f"Pending recipe not found: {slug}")
+
+    if osp.exists(dst):
+        raise FileExistsError(f"Recipe already exists: {slug}")
+
+    os.makedirs(osp.dirname(dst), exist_ok=True)
+
+    # Move the directory
+    shutil.move(src, dst)
+
+def discard_pending(slug: str, pending_dir: str = PENDING_DIR):
+    """Delete a pending recipe."""
+    recipe_dir = osp.join(pending_dir, slug)
+    if not osp.exists(recipe_dir):
+        raise FileNotFoundError(f"Pending recipe not found: {slug}")
+
+    shutil.rmtree(recipe_dir)
+
+def demote_recipe(slug: str, recipes_dir: str = RECIPES_DIR, pending_dir: str = PENDING_DIR):
+    """Move a recipe from saved to pending."""
+    # Find the recipe in saved directories
+    src = None
+    for recipe in get_all_recipes():
+        if recipe.slug == slug:
+            src = osp.join(recipes_dir, recipe.path)
+            break
+
+    if not src or not osp.exists(src):
+        raise FileNotFoundError(f"Saved recipe not found: {slug}")
+
+    dst = osp.join(pending_dir, slug)
+
+    if osp.exists(dst):
+        raise FileExistsError(f"Recipe already exists in pending: {slug}")
+
+    os.makedirs(osp.dirname(dst), exist_ok=True)
+
+    # Move the directory
+    shutil.move(src, dst)
+
+def delete_saved_recipe(slug: str, recipes_dir: str = RECIPES_DIR):
+    """Delete a saved recipe."""
+    # Find the recipe in saved directories
+    recipe_dir = None
+    for recipe in get_all_recipes():
+        if recipe.slug == slug:
+            recipe_dir = osp.join(recipes_dir, recipe.path)
+            break
+
+    if not recipe_dir or not osp.exists(recipe_dir):
+        raise FileNotFoundError(f"Saved recipe not found: {slug}")
+
+    shutil.rmtree(recipe_dir)
+
+# ---------------------------------------------------------------------------
+# Routes — Recipe Editor
+# ---------------------------------------------------------------------------
+
+@app.route("/editor", methods=["GET"])
+def editor_page():
+    """Render the recipe editor page with tabs for editing and importing."""
+    return render_template("editor.html", active_page="editor")
+
+@app.route("/editor/recipes", methods=["GET"])
+def list_all_recipes():
+    """List all recipes (saved and pending) for the editor."""
+    saved_recipes = []
+    pending_recipes = []
+
+    # Get saved recipes
+    for recipe in get_all_recipes():
+        saved_recipes.append({
+            "slug": recipe.slug,
+            "name": recipe.name,
+            "path": recipe.path,
+            "status": "saved"
+        })
+
+    # Get pending recipes
+    if osp.exists(PENDING_DIR):
+        for slug in os.listdir(PENDING_DIR):
+            recipe_dir = osp.join(PENDING_DIR, slug)
+            if osp.isdir(recipe_dir):
+                pending_recipes.append({
+                    "slug": slug,
+                    "name": slug.replace("_", " ").title(),
+                    "status": "pending"
+                })
+
+    return jsonify({
+        "success": True,
+        "saved": saved_recipes,
+        "pending": pending_recipes
+    })
+
+@app.route("/editor/recipe/<status>/<slug>", methods=["GET"])
+def load_recipe(status, slug):
+    """Load a recipe's YAML and markdown for editing."""
+    if status == "saved":
+        recipes = get_all_recipes()
+        recipe = next((r for r in recipes if r.slug == slug), None)
+        if not recipe:
+            return jsonify({"error": "Recipe not found"}), 404
+
+        recipe_dir = osp.join(RECIPES_DIR, recipe.path)
+    elif status == "pending":
+        recipe_dir = osp.join(PENDING_DIR, slug)
+        if not osp.exists(recipe_dir):
+            return jsonify({"error": "Recipe not found"}), 404
+    else:
+        return jsonify({"error": "Invalid status"}), 400
+
+    # Load YAML
+    yaml_path = osp.join(recipe_dir, "recipe.yaml")
+    yaml_content = ""
+    if osp.exists(yaml_path):
+        with open(yaml_path, "r") as f:
+            yaml_content = f.read()
+
+    # Load Markdown (try recipe.md first, then any .md file)
+    md_content = ""
+    md_filename = "recipe.md"
+    md_path = osp.join(recipe_dir, md_filename)
+
+    if not osp.exists(md_path):
+        # Find any markdown file
+        for f in os.listdir(recipe_dir):
+            if f.endswith(".md"):
+                md_filename = f
+                md_path = osp.join(recipe_dir, f)
+                break
+
+    if osp.exists(md_path):
+        with open(md_path, "r") as f:
+            md_content = f.read()
+
+    return jsonify({
+        "success": True,
+        "yaml": yaml_content,
+        "markdown": md_content,
+        "md_filename": md_filename
+    })
+
+@app.route("/editor/recipe/<status>/<slug>", methods=["POST"])
+def save_recipe(status, slug):
+    """Save edited recipe YAML and markdown."""
+    data = request.get_json()
+    yaml_content = data.get("yaml", "")
+    markdown_content = data.get("markdown", "")
+
+    if status == "saved":
+        recipes = get_all_recipes()
+        recipe = next((r for r in recipes if r.slug == slug), None)
+        if not recipe:
+            return jsonify({"error": "Recipe not found"}), 404
+
+        recipe_dir = osp.join(RECIPES_DIR, recipe.path)
+    elif status == "pending":
+        recipe_dir = osp.join(PENDING_DIR, slug)
+        if not osp.exists(recipe_dir):
+            return jsonify({"error": "Recipe not found"}), 404
+    else:
+        return jsonify({"error": "Invalid status"}), 400
+
+    try:
+        # Validate YAML
+        yaml.safe_load(yaml_content)
+
+        # Save YAML
+        yaml_path = osp.join(recipe_dir, "recipe.yaml")
+        with open(yaml_path, "w") as f:
+            f.write(yaml_content)
+
+        # Save Markdown
+        md_path = osp.join(recipe_dir, "recipe.md")
+        with open(md_path, "w") as f:
+            f.write(markdown_content)
+
+        # Invalidate cache if saved recipe
+        if status == "saved":
+            _invalidate_shopping_list_cache()
+
+        return jsonify({"success": True, "message": "Recipe saved successfully"})
+
+    except yaml.YAMLError as e:
+        return jsonify({"error": f"Invalid YAML: {str(e)}"}), 400
+    except Exception as e:
+        logger.error("Failed to save recipe: %s", e, exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/editor/preview", methods=["POST"])
+def preview_markdown():
+    """Render markdown to HTML for preview."""
+    data = request.get_json()
+    markdown_content = data.get("markdown", "")
+    recipe_slug = data.get("slug", "")
+
+    html_content = markdown.markdown(markdown_content, extensions=[
+        "tables",
+        "fenced_code",
+        "nl2br",
+        "sane_lists"
+    ])
+
+    # Fix image paths if recipe slug is provided
+    if recipe_slug:
+        # Find the recipe to get its path
+        recipes = get_all_recipes()
+        recipe = next((r for r in recipes if r.slug == recipe_slug), None)
+
+        if recipe:
+            # Fix relative image paths
+            html_content = re.sub(
+                r'src="([^":]+)"',
+                lambda m: f'src="/recipes/{recipe.slug}/{m.group(1)}"',
+                html_content,
+            )
+        else:
+            # Check if it's a pending recipe
+            pending_dir = osp.join(PENDING_DIR, recipe_slug)
+            if osp.exists(pending_dir):
+                html_content = re.sub(
+                    r'src="([^":]+)"',
+                    lambda m: f'src="/pending/{recipe_slug}/{m.group(1)}"',
+                    html_content,
+                )
+
+    return jsonify({
+        "success": True,
+        "html": html_content
+    })
+
+# ---------------------------------------------------------------------------
+# Routes — Recipe Import (Gemini)
+# ---------------------------------------------------------------------------
+
+@app.route("/import/extract", methods=["POST"])
+def import_extract():
+    """Extract recipe using Gemini API and return preview."""
+    data = request.get_json()
+    url = (data.get("url") or "").strip() or None
+    text = (data.get("text") or "").strip() or None
+
+    if not url and not text:
+        return jsonify({"error": "Provide a URL or pasted text."}), 400
+
+    try:
+        result = extract_recipe(url=url, text=text)
+    except Exception as e:
+        logger.error("Extraction failed: %s", e)
+        return jsonify({"error": str(e)}), 500
+
+    session["pending_import"] = {
+        "recipe_data": result.recipe_data.model_dump(mode="json"),
+        "markdown": result.markdown,
+        "slug": result.slug,
+        "source": result.source,
+    }
+
+    return jsonify({
+        "success": True,
+        "recipe": result.recipe_data.model_dump(mode="json"),
+        "markdown_preview": result.markdown,
+        "slug": result.slug,
+        "source": result.source,
+    })
+
+@app.route("/import/confirm", methods=["POST"])
+def import_confirm():
+    """Save the previewed recipe to pending/."""
+    pending = session.get("pending_import")
+    if not pending:
+        return jsonify({"error": "No pending import found. Please extract first."}), 400
+
+    result = ImportResult(
+        recipe_data=RecipeData(**pending["recipe_data"]),
+        markdown=pending["markdown"],
+        slug=pending["slug"],
+        source=pending["source"],
+    )
+
+    try:
+        save_pending(result, pending_dir=PENDING_DIR)
+    except Exception as e:
+        logger.error("Failed to save pending recipe: %s", e)
+        return jsonify({"error": str(e)}), 500
+
+    session.pop("pending_import", None)
+    return jsonify({"success": True, "slug": result.slug})
 
 # @app.route("/import/extract", methods=["POST"])
 # def import_extract():
@@ -854,13 +1175,8 @@ def import_page():
 
 @app.route("/pending")
 def pending_list():
-    slugs = []
-    if osp.exists(PENDING_DIR):
-        slugs = sorted(
-            d for d in os.listdir(PENDING_DIR)
-            if osp.isdir(osp.join(PENDING_DIR, d))
-        )
-    return render_template("pending.html", slugs=slugs, active_page="import")
+    """Redirect to editor page."""
+    return redirect("/editor")
 
 @app.route("/pending/promote/<slug>", methods=["POST"])
 def promote(slug):
@@ -875,6 +1191,26 @@ def promote(slug):
 def discard(slug):
     try:
         discard_pending(slug, pending_dir=PENDING_DIR)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"success": True})
+
+@app.route("/editor/demote/<slug>", methods=["POST"])
+def demote(slug):
+    """Move a recipe from saved to pending."""
+    try:
+        demote_recipe(slug, recipes_dir=RECIPES_DIR, pending_dir=PENDING_DIR)
+        _invalidate_shopping_list_cache()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"success": True})
+
+@app.route("/editor/delete/<slug>", methods=["POST"])
+def delete_saved(slug):
+    """Delete a saved recipe."""
+    try:
+        delete_saved_recipe(slug, recipes_dir=RECIPES_DIR)
+        _invalidate_shopping_list_cache()
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     return jsonify({"success": True})

@@ -16,22 +16,24 @@ $(document).ready(function () {
             $('#categoryGroups').hide();
             $('#mealGroups').show();
         }
+
+        // Re-apply active state to currently selected recipe
+        const lastSelected = localStorage.getItem('lastSelectedRecipeOnList');
+        if (lastSelected) {
+            $('.recipe-item').removeClass('active');
+            $(`.recipe-item[data-recipename="${lastSelected}"]`).addClass('active');
+        }
     });
 
     // Render markdown when a recipe row is clicked
     const contentDiv = document.getElementById('markdownContent');
 
-    // Use event delegation since recipe items are in multiple groups
-    $(document).on('click', '.recipe-item', function(e) {
-        // Don't trigger when clicking the button
-        if ($(e.target).closest('.add-recipe').length) {
-            return;
-        }
-
-        const recipename = $(this).data('recipename');
-
+    function loadRecipe(recipename, $item) {
         $('.recipe-item').removeClass('active');
-        $(this).addClass('active');
+        $item.addClass('active');
+
+        // Save to localStorage
+        localStorage.setItem('lastSelectedRecipeOnList', recipename);
 
         fetch(`/markdown/recipe/${recipename}`)
             .then(res => res.json())
@@ -41,7 +43,43 @@ $(document).ready(function () {
             .catch(() => {
                 contentDiv.innerHTML = '<p style="color:red;">Failed to load recipe.</p>';
             });
+    }
+
+    // Use event delegation since recipe items are in multiple groups
+    $(document).on('click', '.recipe-item', function(e) {
+        // Don't trigger when clicking the button
+        if ($(e.target).closest('.add-recipe').length) {
+            return;
+        }
+
+        const recipename = $(this).data('recipename');
+        loadRecipe(recipename, $(this));
     });
+
+    // Load last selected recipe on page load
+    const lastSelected = localStorage.getItem('lastSelectedRecipeOnList');
+    if (lastSelected) {
+        const $item = $(`.recipe-item[data-recipename="${lastSelected}"]`);
+        if ($item.length) {
+            // Small delay to ensure DOM is ready
+            setTimeout(function() {
+                loadRecipe(lastSelected, $item);
+
+                // Scroll to the recipe if it's not visible
+                const itemTop = $item.offset().top;
+                const itemHeight = $item.outerHeight();
+                const windowTop = $(window).scrollTop();
+                const windowHeight = $(window).height();
+
+                // Check if item is outside viewport
+                if (itemTop < windowTop || itemTop + itemHeight > windowTop + windowHeight) {
+                    $('html, body').animate({
+                        scrollTop: itemTop - (windowHeight / 2) + (itemHeight / 2)
+                    }, 300);
+                }
+            }, 100);
+        }
+    }
 
     // Toggle selected state (use event delegation)
     $(document).on('click', '.add-recipe', function (e) {

@@ -24,7 +24,7 @@
                     <div class="nav-buttons-container">
                         <a class="btn btn-sm nav-btn {% if active_page == 'home' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{{ url_for('index') }}">Shopping List</a>
                         <a class="btn btn-sm nav-btn {% if active_page == 'recipes_list' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{{ url_for('recipes_list') }}">Recipes</a>
-                        <a class="btn btn-sm nav-btn {% if active_page == 'import' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{{ url_for('import_page') }}">Import Recipe</a>
+                        <a class="btn btn-sm nav-btn {% if active_page == 'editor' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{{ url_for('editor_page') }}">Editor</a>
                     </div>
                 </div>
             </nav>
@@ -33,10 +33,6 @@
         <main>
             {% block content %}{% endblock %}
         </main>
-    
-        <footer>
-            <p>&copy; 2025 Spencer Diehl</p>
-        </footer>
 
     </div>
 
