@@ -98,3 +98,33 @@ Recipes
 
 TODO
 - Still need photo for butternut squash soup
+
+
+
+# -----------------------------------------------
+
+TODO
+- Log with foods we don't recognize. Need some feedback that we should add a food to foods.yaml
+- Testing - testing generating a shopping list from each recipe. 
+- Better README
+- Workflow for importing recipes
+- Config for personal data (app password, default emails to send to, email to send from, etc)
+- Starter files for setting up as a service
+
+- Look into hosting this on web so we can access anywhere. 
+- Better output of PDFs. should match what we see on the webpage. 
+    - Look into using Playwright / Puppeteer
+
+- Method for printing recipes
+- Think about mirroring web with physical recipe book. 
+    - Maybe we should get rid of meal/category. And just have something like "section". Update
+    to match the section we use in our physical recipe book. Can be arbitrary - dinner, dessert, side
+
+At some point, we should refine how we randomly select. I mainly want to get 2-3 entrees for the week, and maybe 2 sides. Should be able to specify how many of each category. Or just keep it random?
+
+
+## Running
+
+export GMAIL_APP_PASSWORD="<app_pasword>"
+export GMAIL_SENDER="<your_email>"
+uv run web/app.py
