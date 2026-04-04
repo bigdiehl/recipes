@@ -1,7 +1,7 @@
 name: Firehouse Mac N Cheese
-servings: null
-category: null
-meal: null
+servings: 4
+category: entree
+meal: dinner
 enabled: false
 min_period_weeks: 4
 ingredients:
